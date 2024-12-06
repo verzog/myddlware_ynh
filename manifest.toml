@@ -74,7 +74,7 @@ ram.runtime = "50M"
     ask.fr = "Choisissez la langue de l'application"
     type = "select"
     choices = ["fr", "en"]
-    default = "fr"
+    default = "en"
 
     [install.admin]
     # this is a generic question - ask strings are automatically handled by YunoHost's core
@@ -130,7 +130,7 @@ ram.runtime = "50M"
     [resources.apt]
     # This will automatically install/uninstall the following apt packages
     # and implicitly define the $phpversion setting as 8.0 (if phpX.Y-foobar dependencies are listed)
-    packages = "mariadb-server, deb1, deb2, php8.0-foo, php8.0-bar"
+    packages = "mariadb-server,php8.2-iconv, php8.2-ctype, php8.2-json, php8.2-pcre, php8.2-session, php8.2-SimpleXMl, php8.2-Tokenizer, php8.2-intl, php8.2-pgsql, php8.2-ldap"
 
     [resources.database]
     # This will automatically provision/deprovison a MySQL DB and store the corresponding credentials in settings $db_user, $db_name, $db_pwd
