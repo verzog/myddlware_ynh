@@ -1,9 +1,7 @@
-
 #!/bin/bash
 set -e
 source /usr/share/yunohost/helpers
-app=$YNH_APP_INSTANCE_NAME
-install_dir=$YNH_INSTALL_DIR
-ynh_setup_source --source_id=main --dest_dir="$install_dir"
+ynh_script_progression --message="Upgrading Myddleware"
+ynh_setup_source --dest_dir="$YNH_APP_INSTALL_DIR"
 ynh_systemd_action --service_name=php8.4-fpm --action=reload
-ynh_systemd_action --service_name=nginx --action=reload
+exit 0

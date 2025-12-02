@@ -1,39 +1,28 @@
-
 #!/bin/bash
 set -e
 source /usr/share/yunohost/helpers
+
 app=$YNH_APP_INSTANCE_NAME
 domain=$YNH_APP_ARG_DOMAIN
 path=$YNH_APP_ARG_PATH
-system_user=$app
-install_dir=$YNH_INSTALL_DIR
 
-ynh_install_app_dependencies
+install_dir=$YNH_APP_INSTALL_DIR
+data_dir=$YNH_APP_DATA_DIR
+system_user=$YNH_APP_SYSTEM_USER
 
-db_name=$app
-db_user=$app
-db_pwd=$(ynh_string_random)
-ynh_mysql_setup_db --db_user=$db_user --db_name=$db_name --db_pwd=$db_pwd
+ynh_script_progression --message="Configuring database"
+ynh_mysql_setup_db --db_name=$app --db_user=$app --db_pwd=$(ynh_string_random)
 
-ynh_setup_source --source_id=main --dest_dir="$install_dir"
+ynh_script_progression --message="Deploying files"
+ynh_setup_source --dest_dir="$install_dir"
+
+ynh_script_progression --message="Setting permissions"
 chown -R $system_user:$system_user "$install_dir"
 
-mailer_url=$(ynh_app_setting_get --app=$app --key=mailer_url || echo "null://localhost")
-debug=$(ynh_app_setting_get --app=$app --key=app_debug || echo "0")
-
-cat > "$install_dir/.env.local" <<EOF
-APP_ENV=prod
-APP_DEBUG=$debug
-APP_SECRET=$(ynh_string_random 32)
-DATABASE_URL="mysql://$db_user:$db_pwd@localhost:3306/$db_name"
-MAILER_URL="$mailer_url"
-EOF
-
-chown $system_user:$system_user "$install_dir/.env.local"
-chmod 600 "$install_dir/.env.local"
-
-ynh_add_fpm_config --phpversion=8.4
+ynh_script_progression --message="Configuring nginx/php"
 ynh_add_nginx_config
-
+ynh_add_fpm_config
 ynh_systemd_action --service_name=php8.4-fpm --action=reload
-ynh_systemd_action --service_name=nginx --action=reload
+
+ynh_script_progression --message="Installation complete"
+exit 0
