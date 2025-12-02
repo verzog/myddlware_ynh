@@ -6,7 +6,8 @@ app=$YNH_APP_INSTANCE_NAME
 domain=$YNH_APP_ARG_DOMAIN
 path=$YNH_APP_ARG_PATH
 system_user=$app
-install_dir=$YNH_INSTALL_DIR
+install_dir=$YNH_APP_INSTALL_DIR
+
 
 ynh_install_app_dependencies
 
