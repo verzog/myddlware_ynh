@@ -14,6 +14,11 @@ yunohost = ">= 11.1"
 helpers_version = "2.1"
 architectures = "all"
 multi_instance = false
+disk = "2G"
+ram.build = "1G"
+ram.runtime = "512M"
+
+
 
 [install]
   [install.domain]
