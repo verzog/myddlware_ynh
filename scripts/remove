@@ -23,8 +23,6 @@ phpversion="${YNH_PHP_VERSION:-8.4}"
 
 ynh_script_progression --message="Removing web server configuration..." --weight=1
 
-ynh_remove_nginx_config
-ynh_remove_fpm_config
 
 #=================================================
 # DROP DATABASE
