@@ -1,7 +1,2 @@
 #!/bin/bash
-set -e
-source /usr/share/yunohost/helpers
-ynh_script_progression --message="Upgrading Myddleware"
-ynh_setup_source --dest_dir="$YNH_APP_INSTALL_DIR"
-ynh_systemd_action --service_name=php8.4-fpm --action=reload
 exit 0

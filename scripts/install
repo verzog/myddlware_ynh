@@ -1,28 +1,2 @@
 #!/bin/bash
-set -e
-source /usr/share/yunohost/helpers
-
-app=$YNH_APP_INSTANCE_NAME
-domain=$YNH_APP_ARG_DOMAIN
-path=$YNH_APP_ARG_PATH
-
-install_dir=$YNH_APP_INSTALL_DIR
-data_dir=$YNH_APP_DATA_DIR
-system_user=$YNH_APP_SYSTEM_USER
-
-ynh_script_progression --message="Configuring database"
-ynh_mysql_setup_db --db_name=$app --db_user=$app --db_pwd=$(ynh_string_random)
-
-ynh_script_progression --message="Deploying files"
-ynh_setup_source --dest_dir="$install_dir"
-
-ynh_script_progression --message="Setting permissions"
-chown -R $system_user:$system_user "$install_dir"
-
-ynh_script_progression --message="Configuring nginx/php"
-ynh_add_nginx_config
-ynh_add_fpm_config
-ynh_systemd_action --service_name=php8.4-fpm --action=reload
-
-ynh_script_progression --message="Installation complete"
 exit 0

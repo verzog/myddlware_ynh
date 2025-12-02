@@ -1,3 +1,3 @@
 # Myddleware YunoHost App
 
-Unofficial YunoHost package.
+Generated package.
