@@ -38,7 +38,7 @@ ram.runtime = "512M"
 [resources]
 [resources.sources.main]
 url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.zip"
-sha256 = "bdf1dc09269d0749f4de1eea9c12fe60620c7e02b8a27b932dd1120cc3c7480c"
+sha256 = "868846bd790bd6893d45684bc4838e6ac486b481eee4c2123317a413ac1beba9"
 
 
   [resources.system_user]
