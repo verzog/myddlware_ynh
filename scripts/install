@@ -21,8 +21,6 @@ phpversion="8.4"
 
 ynh_script_progression --message="Checking installation parameters..." --weight=1
 
-ynh_webpath_available --domain="$domain" --path="$path"
-ynh_webpath_register --domain="$domain" --path="$path" --app="$app"
 
 # Retrieve system user and install dir created from resources
 system_user=$(ynh_app_setting_get --app="$app" --key=system_user || true)
