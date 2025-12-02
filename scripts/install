@@ -2,6 +2,7 @@
 #!/bin/bash
 set -e
 source /usr/share/yunohost/helpers
+
 app=$YNH_APP_INSTANCE_NAME
 domain=$YNH_APP_ARG_DOMAIN
 path=$YNH_APP_ARG_PATH
@@ -18,14 +19,6 @@ ynh_mysql_setup_db --db_user=$db_user --db_name=$db_name --db_pwd=$db_pwd
 ynh_setup_source --source_id=main --dest_dir="$install_dir"
 chown -R $system_user:$system_user "$install_dir"
 
-pushd "$install_dir"
-ynh_exec_as $system_user composer install --no-dev --optimize-autoloader
-if ! command -v yarn >/dev/null; then ln -sf $(command -v yarnpkg) /usr/local/bin/yarn; fi
-ynh_exec_as $system_user yarn install
-ynh_exec_as $system_user yarn build
-popd
-
-# Handle config panel
 mailer_url=$(ynh_app_setting_get --app=$app --key=mailer_url || echo "null://localhost")
 debug=$(ynh_app_setting_get --app=$app --key=app_debug || echo "0")
 
@@ -37,7 +30,11 @@ DATABASE_URL="mysql://$db_user:$db_pwd@localhost:3306/$db_name"
 MAILER_URL="$mailer_url"
 EOF
 
+chown $system_user:$system_user "$install_dir/.env.local"
+chmod 600 "$install_dir/.env.local"
+
 ynh_add_fpm_config --phpversion=8.4
 ynh_add_nginx_config
+
 ynh_systemd_action --service_name=php8.4-fpm --action=reload
 ynh_systemd_action --service_name=nginx --action=reload

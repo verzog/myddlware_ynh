@@ -2,8 +2,8 @@
 packaging_format = 2
 id = "myddleware"
 name = "Myddleware"
-version = "4.2.2~ynh3"
-description.en = "Myddleware integration platform for YunoHost"
+version = "4.2.2~ynh5"
+description.en = "Myddleware integration platform for YunoHost (prebuilt, no NodeJS)"
 
 [upstream]
 website = "https://myddleware.com"
@@ -14,6 +14,9 @@ yunohost = ">= 11.1"
 helpers_version = "2.1"
 architectures = "all"
 multi_instance = false
+disk = "2G"
+ram.build = "256M"
+ram.runtime = "512M"
 
 [install]
   [install.domain]
@@ -24,21 +27,26 @@ multi_instance = false
 
 [configuration]
   [configuration.env.panel]
-    name = "Myddleware configuration"
+    name = "Myddleware environment settings"
     [configuration.env.panel.vars]
       mailer_url.type = "string"
-      mailer_url.help = "SMTP URL for outgoing emails"
+      mailer_url.default = "null://localhost"
+      mailer_url.help = "SMTP URL for sending mail"
       app_debug.type = "boolean"
       app_debug.default = false
 
 [resources]
   [resources.sources.main]
-    url="https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.tar.gz"
-    sha256="8319bb7ef8c62eb61963f90119e85f2908837c904c5ecd3853fc8726bf765272"
+    url="https://github.com/Myddleware/myddleware/releases/download/v4.2.2/myddleware-4.2.2.zip"
+    sha256="bdf1dc09269d0749f4de1eea9c12fe60620c7e02b8a27b932dd1120cc3c7480c"
 
   [resources.system_user]
   [resources.install_dir]
   [resources.data_dir]
 
   [resources.apt]
-    packages=["php8.4","php8.4-fpm","php8.4-cli","php8.4-mysql","php8.4-xml","php8.4-mbstring","php8.4-zip","php8.4-curl","php8.4-gd","nodejs","npm","yarnpkg","mariadb-server","git"]
+    packages=[
+      "php8.4","php8.4-fpm","php8.4-cli","php8.4-mysql",
+      "php8.4-xml","php8.4-mbstring","php8.4-zip",
+      "php8.4-curl","php8.4-gd","mariadb-server","git"
+    ]

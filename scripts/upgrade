@@ -4,14 +4,6 @@ set -e
 source /usr/share/yunohost/helpers
 app=$YNH_APP_INSTANCE_NAME
 install_dir=$YNH_INSTALL_DIR
-
 ynh_setup_source --source_id=main --dest_dir="$install_dir"
-
-pushd "$install_dir"
-ynh_exec_as $app composer install --no-dev --optimize-autoloader
-ynh_exec_as $app yarn install
-ynh_exec_as $app yarn build
-popd
-
 ynh_systemd_action --service_name=php8.4-fpm --action=reload
 ynh_systemd_action --service_name=nginx --action=reload
