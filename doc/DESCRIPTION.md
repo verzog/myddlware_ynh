@@ -1,1 +1,2 @@
-This is a dummy description of this app features
+# Myddleware YunoHost package
+Fully packaging_format=2 compliant.
