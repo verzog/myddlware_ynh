@@ -1,5 +1,11 @@
-
 #!/bin/bash
 set -e
 source /usr/share/yunohost/helpers
-ynh_remove_app_dependencies
+
+ynh_script_progression --message="Removing Myddleware"
+ynh_remove_nginx_config
+ynh_remove_fpm_config
+ynh_secure_remove --file="$YNH_APP_INSTALL_DIR"
+ynh_secure_remove --file="$YNH_APP_DATA_DIR"
+ynh_mysql_remove_db "$app" "$app"
+exit 0
