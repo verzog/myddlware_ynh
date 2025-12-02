@@ -1,48 +1,9 @@
+
 #!/bin/bash
-
-set -eu
-
+set -e
 source /usr/share/yunohost/helpers
-
 app=$YNH_APP_INSTANCE_NAME
-phpversion="8.4"
-
-ynh_script_progression --message="Upgrading Myddleware (basic upgrade stub)..." --weight=1
-
-install_dir=$(ynh_app_setting_get --app="$app" --key=install_dir)
-
-# Update sources if manifest version / source has changed
-ynh_script_progression --message="Updating application sources..." --weight=2
-ynh_setup_source --dest_dir="$install_dir" --source_id="main"
-
-system_user=$(ynh_app_setting_get --app="$app" --key=system_user || echo "$app")
-
-# Re-run composer and yarn to ensure deps are up-to-date
-ynh_script_progression --message="Re-installing PHP dependencies..." --weight=2
-pushd "$install_dir"
-    ynh_exec_as "$system_user" composer install --no-dev --optimize-autoloader
-popd
-
-ynh_script_progression --message="Re-building JS assets..." --weight=2
-if ! command -v yarn >/dev/null 2>&1; then
-    if command -v yarnpkg >/dev/null 2>&1; then
-        ln -sf "$(command -v yarnpkg)" /usr/local/bin/yarn
-    else
-        ynh_die "Neither yarn nor yarnpkg was found, required for asset build."
-    fi
-fi
-
-pushd "$install_dir"
-    if [ -f yarn.lock ]; then
-        ynh_exec_as "$system_user" yarn install --frozen-lockfile
-    else
-        ynh_exec_as "$system_user" yarn install
-    fi
-    ynh_exec_as "$system_user" yarn build
-popd
-
-# Reload services in case PHP/NGINX config changed
-ynh_systemd_action --service_name="php${phpversion}-fpm" --action=reload
-ynh_systemd_action --service_name="nginx" --action=reload
-
-ynh_script_progression --message="Myddleware upgrade finished." --last
+install_dir=$YNH_INSTALL_DIR
+ynh_setup_source --source_id=main --dest_dir="$install_dir"
+ynh_systemd_action --service_name=php8.4-fpm --action=reload
+ynh_systemd_action --service_name=nginx --action=reload

@@ -1,52 +1,5 @@
+
 #!/bin/bash
-
-set -eu
-
+set -e
 source /usr/share/yunohost/helpers
-
-app=$YNH_APP_INSTANCE_NAME
-
-ynh_script_progression --message="Removing Myddleware..." --weight=1
-
-#=================================================
-# RETRIEVE SETTINGS
-#=================================================
-
-install_dir=$(ynh_app_setting_get --app="$app" --key=install_dir || true)
-db_name=$(ynh_app_setting_get --app="$app" --key=db_name || true)
-db_user=$(ynh_app_setting_get --app="$app" --key=db_user || true)
-phpversion="${YNH_PHP_VERSION:-8.4}"
-
-#=================================================
-# REMOVE NGINX & PHP-FPM CONFIG
-#=================================================
-
-ynh_script_progression --message="Removing web server configuration..." --weight=1
-
-
-#=================================================
-# DROP DATABASE
-#=================================================
-
-if [ -n "${db_name:-}" ] && [ -n "${db_user:-}" ]; then
-    ynh_script_progression --message="Dropping MariaDB database..." --weight=1
-    ynh_mysql_drop_db --db_name="$db_name" --db_user="$db_user"
-fi
-
-#=================================================
-# REMOVE APP FILES
-#=================================================
-
-if [ -n "${install_dir:-}" ] && [ -d "$install_dir" ]; then
-    ynh_script_progression --message="Removing application files..." --weight=1
-    ynh_secure_remove --file="$install_dir"
-fi
-
-#=================================================
-# REMOVE DEPENDENCIES
-#=================================================
-
-ynh_script_progression --message="Removing app-specific dependencies..." --weight=1
 ynh_remove_app_dependencies
-
-ynh_script_progression --message="Myddleware removal complete." --last
