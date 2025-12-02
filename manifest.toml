@@ -38,12 +38,11 @@ ram.runtime = "512M"
 
 [resources]
 
-  [resources.sources]
-    [resources.sources.main]
-    # Latest release at time of packaging (2025-11-24)
-    url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.tar.gz"
-    # TODO: replace with the real checksum from `sha256sum v4.2.2.tar.gz`
-    sha256 = "CHANGE_ME"
+[resources.sources]
+  [resources.sources.main]
+  url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.tar.gz"
+  sha256 = "8319bb7ef8c62eb61963f90119e85f2908837c904c5ecd3853fc8726bf765272"
+
 
   [resources.system_user]
 
