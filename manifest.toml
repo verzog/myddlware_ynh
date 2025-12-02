@@ -11,38 +11,34 @@ maintainers = ["verzog"]
 yunohost = ">= 12.0"
 architectures = ["amd64", "arm64"]
 multi_instance = true
-
-[integration.disk]
-required = "200M"
-
-[integration.ram]
-required = "512M"
+disk = "200M"
+ram = "512M"
 
 [resources]
 
-    [resources.sources]
+  [resources.sources]
 
-        [resources.sources.main]
-        url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.zip"
-        sha256 = "bdf1dc09269d0749f4de1eea9c12fe60620c7e02b8a27b932dd1120cc3c7480c"
+    [resources.sources.main]
+    url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.zip"
+    sha256 = "bdf1dc09269d0749f4de1eea9c12fe60620c7e02b8a27b932dd1120cc3c7480c"
 
-    [resources.install_dir]
-    default = "/var/www/{app}"
+  [resources.install_dir]
+  default = "/var/www/{app}"
 
-    [resources.data_dir]
-    default = "/var/lib/{app}"
+  [resources.data_dir]
+  default = "/var/lib/{app}"
 
-    [resources.system_user]
+  [resources.system_user]
 
-    [resources.permissions]
-        [resources.permissions.main]
-        url = "/"
-        allowed = "visitors"
+  [resources.permissions]
+    [resources.permissions.main]
+    url = "/"
+    allowed = "visitors"
 
 [install]
-    [install.domain]
-    type = "domain"
+  [install.domain]
+  type = "domain"
 
-    [install.path]
-    type = "path"
-    default = "/myddleware"
+  [install.path]
+  type = "path"
+  default = "/myddleware"
