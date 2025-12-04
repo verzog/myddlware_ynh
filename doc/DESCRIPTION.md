@@ -1,1 +1,1 @@
-# Prebuilt Myddleware package (no NodeJS)
+Myddleware lets you create and schedule data integration rules between many applications. This package provides the upstream release packaged for YunoHost with a preconfigured PHP-FPM pool and NGINX vhost.

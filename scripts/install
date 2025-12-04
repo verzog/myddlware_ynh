@@ -1,2 +1,106 @@
 #!/bin/bash
-exit 0
+
+#=================================================
+# IMPORT GENERIC HELPERS
+#=================================================
+
+source _common.sh
+source /usr/share/yunohost/helpers
+
+# Exit on command errors
+ynh_abort_if_errors
+
+#=================================================
+# RETRIEVE ARGUMENTS
+#=================================================
+
+domain=$YNH_APP_ARG_DOMAIN
+path_url=$YNH_APP_ARG_PATH
+
+#=================================================
+# CHECK ARGUMENTS
+#=================================================
+
+ynh_script_progression "Validating installation parameters..."
+ynh_check_domain_path --domain="$domain" --path_url="$path_url"
+
+#=================================================
+# STORE SETTINGS
+#=================================================
+
+ynh_app_setting_set --app="$app" --key=domain --value="$domain"
+ynh_app_setting_set --app="$app" --key=path --value="$path_url"
+ynh_app_setting_set --app="$app" --key=phpversion --value="$YNH_PHP_VERSION"
+
+install_dir=/var/www/$app
+data_dir=/var/lib/$app
+
+ynh_app_setting_set --app="$app" --key=install_dir --value="$install_dir"
+ynh_app_setting_set --app="$app" --key=data_dir --value="$data_dir"
+
+#=================================================
+# CREATE SYSTEM USER
+#=================================================
+
+ynh_script_progression "Creating dedicated system user..."
+ynh_system_user_create --username="$app" --home_dir="$data_dir"
+
+#=================================================
+# INSTALL DEPENDENCIES
+#=================================================
+
+ynh_script_progression "Installing required dependencies..."
+ynh_exec_warn_less ynh_install_app_dependencies "${pkg_dependencies[@]}"
+
+#=================================================
+# SETUP SOURCE
+#=================================================
+
+ynh_script_progression "Retrieving Myddleware sources..."
+ynh_setup_source --source_id=main --dest_dir="$install_dir"
+
+chown -R "$app":www-data "$install_dir"
+chmod -R 750 "$install_dir"
+
+#=================================================
+# PHP-FPM CONFIGURATION
+#=================================================
+
+ynh_script_progression "Configuring PHP-FPM pool..."
+fpm_template=/etc/php/$YNH_PHP_VERSION/fpm/pool.d/$app.conf
+ynh_backup_if_checksum_is_different --file="$fpm_template"
+ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file=conf/php-fpm.conf | \
+    ynh_replace_string --match_string="__USER__" --replace_string="$app" | \
+    ynh_replace_string --match_string="__INSTALL_DIR__" --replace_string="$install_dir" | \
+    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" > "$fpm_template"
+
+#=================================================
+# NGINX CONFIGURATION
+#=================================================
+
+ynh_script_progression "Configuring NGINX..."
+nginx_conf_path=/etc/nginx/conf.d/$domain.d/$app.conf
+ynh_backup_if_checksum_is_different --file="$nginx_conf_path"
+ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file=conf/nginx.conf | \
+    ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" | \
+    ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" | \
+    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" | \
+    ynh_replace_string --match_string="__APP__" --replace_string="$app" > "$nginx_conf_path"
+
+#=================================================
+# SETUP PERMISSIONS
+#=================================================
+
+ynh_script_progression "Registering web path and permissions..."
+ynh_webpath_register --app="$app" --domain="$domain" --path_url="$path_url"
+ynh_permission_create --permission=main --url="$path_url" --allowed="visitors" --show_tile
+
+#=================================================
+# RELOAD SERVICES
+#=================================================
+
+ynh_script_progression "Reloading services..."
+ynh_systemd_action --service="php$YNH_PHP_VERSION-fpm" --action=reload
+ynh_systemd_action --service=nginx --action=reload
+
+ynh_script_progression "Installation of $app completed"

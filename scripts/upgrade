@@ -1,2 +1,60 @@
 #!/bin/bash
-exit 0
+
+source _common.sh
+source /usr/share/yunohost/helpers
+
+ynh_abort_if_errors
+
+#=================================================
+# LOAD SETTINGS
+#=================================================
+
+domain=$(ynh_app_setting_get --app="$app" --key=domain)
+path_url=$(ynh_app_setting_get --app="$app" --key=path)
+install_dir=$(ynh_app_setting_get --app="$app" --key=install_dir)
+phpversion=$(ynh_app_setting_get --app="$app" --key=phpversion)
+
+#=================================================
+# ENSURE DEPENDENCIES
+#=================================================
+
+ynh_script_progression "Upgrading dependencies..."
+ynh_exec_warn_less ynh_install_app_dependencies "${pkg_dependencies[@]}"
+
+#=================================================
+# UPDATE SOURCE FILES
+#=================================================
+
+ynh_script_progression "Updating Myddleware sources..."
+ynh_setup_source --source_id=main --dest_dir="$install_dir" --full_replace
+chown -R "$app":www-data "$install_dir"
+chmod -R 750 "$install_dir"
+
+#=================================================
+# UPDATE CONFIGURATIONS
+#=================================================
+
+ynh_script_progression "Refreshing PHP-FPM pool..."
+fpm_template=/etc/php/$phpversion/fpm/pool.d/$app.conf
+ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file=conf/php-fpm.conf | \
+    ynh_replace_string --match_string="__USER__" --replace_string="$app" | \
+    ynh_replace_string --match_string="__INSTALL_DIR__" --replace_string="$install_dir" | \
+    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$phpversion" > "$fpm_template"
+
+ynh_script_progression "Refreshing NGINX configuration..."
+nginx_conf_path=/etc/nginx/conf.d/$domain.d/$app.conf
+ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file=conf/nginx.conf | \
+    ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" | \
+    ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" | \
+    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$phpversion" | \
+    ynh_replace_string --match_string="__APP__" --replace_string="$app" > "$nginx_conf_path"
+
+#=================================================
+# RELOAD SERVICES
+#=================================================
+
+ynh_script_progression "Reloading services..."
+ynh_systemd_action --service="php$phpversion-fpm" --action=reload
+ynh_systemd_action --service=nginx --action=reload
+
+ynh_script_progression "Upgrade completed"
