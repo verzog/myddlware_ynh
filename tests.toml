@@ -11,12 +11,8 @@ maintainers = ["verzog"]
 yunohost = ">= 12.0"
 architectures = ["amd64", "arm64"]
 multi_instance = true
-
-[integration.disk]
-required = "200M"
-
-[integration.ram]
-required = "512M"
+disk = "200M"
+ram = "512M"
 
 [resources]
 
