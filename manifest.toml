@@ -14,6 +14,8 @@ multi_instance = true
 disk = "200M"
 
     [integration.ram]
+    build = "512M"
+    runtime = "512M"
     value = "512M"
 
 [requirements]
