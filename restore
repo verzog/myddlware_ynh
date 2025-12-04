@@ -1,4 +1,11 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
+
+app="${YNH_APP_INSTANCE_NAME:?}"
+export YNH_APP_INSTANCE_NAME="$app"
+export YNH_APP_INSTALL_DIR="${YNH_APP_INSTALL_DIR:-/var/www/$app}"
+export YNH_APP_DATA_DIR="${YNH_APP_DATA_DIR:-/var/lib/$app}"
+
+set -u
 SCRIPT_DIR="$(cd -- "$(dirname "$0")" && pwd)"
 exec "$SCRIPT_DIR/scripts/restore" "$@"
