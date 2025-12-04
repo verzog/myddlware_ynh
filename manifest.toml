@@ -16,6 +16,14 @@ disk = "200M"
     [integration.ram]
     build = "512M"
     runtime = "512M"
+    value = "512M"
+
+[requirements]
+    [requirements.ram]
+    value = "512M"
+    build = "512M"
+    include_swap = false
+
 
 [resources]
 
