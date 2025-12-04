@@ -19,7 +19,7 @@ domain=$YNH_APP_ARG_DOMAIN
 path_url=$YNH_APP_ARG_PATH
 app=$YNH_APP_INSTANCE_NAME
 
-# FIX: Force the correct install directory path
+# Force the correct install directory path
 install_dir="/var/www/$app"
 data_dir="/var/lib/$app"
 
@@ -37,6 +37,10 @@ db_name=$(ynh_sanitize_dbid --db_name=$app)
 db_user=$(ynh_sanitize_dbid --db_name=$app)
 db_pwd=$(ynh_string_random 20)
 
+# FIX: Drop the database if it exists from a previous failed install
+ynh_mysql_execute_as_root --sql="DROP DATABASE IF EXISTS $db_name; DROP USER IF EXISTS '$db_user'@'localhost';"
+
+# Create the database fresh
 ynh_mysql_setup_db --db_user=$db_user --db_name=$db_name --db_pwd=$db_pwd
 
 #=================================================
@@ -74,10 +78,10 @@ chmod -R 750 "$install_dir"
 ynh_script_progression "Configuring PHP-FPM pool..."
 fpm_template=/etc/php/$YNH_PHP_VERSION/fpm/pool.d/$app.conf
 
-# 1. Copy the file first (Fixes "File not found")
+# 1. Copy the file first (Source is in ../conf/)
 cp ../conf/php-fpm.conf "$fpm_template"
 
-# 2. Modify in-place (Fixes "Pipe/Unbound variable" errors)
+# 2. Modify in-place
 ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$fpm_template"
 ynh_replace_string --match_string="__USER__" --replace_string="$app" --target_file="$fpm_template"
 ynh_replace_string --match_string="__INSTALL_DIR__" --replace_string="$install_dir" --target_file="$fpm_template"
@@ -93,4 +97,19 @@ nginx_conf_path=/etc/nginx/conf.d/$domain.d/$app.conf
 # 1. Copy the file first
 cp ../conf/nginx.conf "$nginx_conf_path"
 
-# 2.
+# 2. Modify in-place
+ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file="$nginx_conf_path"
+ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" --target_file="$nginx_conf_path"
+ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" --target_file="$nginx_conf_path"
+ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" --target_file="$nginx_conf_path"
+ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$nginx_conf_path"
+
+#=================================================
+# RELOAD SERVICES
+#=================================================
+
+ynh_script_progression "Reloading services..."
+ynh_systemd_action --service="php$YNH_PHP_VERSION-fpm" --action=reload
+ynh_systemd_action --service=nginx --action=reload
+
+ynh_script_progression "Installation of $app completed"
