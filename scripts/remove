@@ -43,6 +43,12 @@ ynh_secure_remove --file="/var/lib/$app"
 ynh_script_progression "Removing dependencies..."
 if type ynh_remove_app_dependencies >/dev/null 2>&1; then
     ynh_remove_app_dependencies
+elif type ynh_apt_remove >/dev/null 2>&1; then
+    ynh_apt_remove --purge "${pkg_dependencies[@]}"
+    ynh_apt_autoremove --purge
+else
+    apt-get --assume-yes --quiet remove --purge "${pkg_dependencies[@]}"
+    apt-get --assume-yes --quiet autoremove --purge
 fi
 
 #=================================================
