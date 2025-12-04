@@ -1,12 +1,18 @@
 #!/bin/bash
 set -eo pipefail
 
-: "${YNH_APP_INSTANCE_NAME:?}"
+
+# Ensure the mandatory instance name is defined before relying on it.
+: "${YNH_APP_INSTANCE_NAME:?}" "YNH_APP_INSTANCE_NAME must be set by YunoHost"
 app="$YNH_APP_INSTANCE_NAME"
+
+# Define installation and data directories with safe defaults so the script
+# does not fail when strict mode is enabled upstream.
+YNH_APP_INSTALL_DIR=${YNH_APP_INSTALL_DIR:-/var/www/$app}
+YNH_APP_DATA_DIR=${YNH_APP_DATA_DIR:-/var/lib/$app}
+
 export YNH_APP_INSTANCE_NAME="$app"
-: "${YNH_APP_INSTALL_DIR:=/var/www/$app}"
 export YNH_APP_INSTALL_DIR
-: "${YNH_APP_DATA_DIR:=/var/lib/$app}"
 export YNH_APP_DATA_DIR
 
 set -u
