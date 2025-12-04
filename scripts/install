@@ -30,7 +30,7 @@ data_dir="/var/lib/$app"
 ynh_script_progression "Validating installation parameters..."
 
 #=================================================
-# SETUP DATABASE (REQUIRED)
+# SETUP DATABASE
 #=================================================
 ynh_script_progression "Setting up database..."
 db_name=$(ynh_sanitize_dbid --db_name=$app)
@@ -48,10 +48,9 @@ ynh_app_setting_set --app="$app" --key=path --value="$path_url"
 ynh_app_setting_set --app="$app" --key=phpversion --value="$YNH_PHP_VERSION"
 ynh_app_setting_set --app="$app" --key=install_dir --value="$install_dir"
 ynh_app_setting_set --app="$app" --key=data_dir --value="$data_dir"
-# Save DB credentials so the app can use them later (e.g. in a config file)
-ynh_app_setting_set --app=$app --key=db_name --value=$db_name
-ynh_app_setting_set --app=$app --key=db_user --value=$db_user
-ynh_app_setting_set --app=$app --key=db_pwd --value=$db_pwd
+ynh_app_setting_set --app="$app" --key=db_name --value="$db_name"
+ynh_app_setting_set --app="$app" --key=db_user --value="$db_user"
+ynh_app_setting_set --app="$app" --key=db_pwd --value="$db_pwd"
 
 #=================================================
 # INSTALL DEPENDENCIES
@@ -65,7 +64,6 @@ ynh_exec_warn_less ynh_install_app_dependencies "${pkg_dependencies[@]}"
 #=================================================
 
 # The manifest extracts the files, but we ensure ownership here
-# explicitly using the file system path
 chown -R "$app":www-data "$install_dir"
 chmod -R 750 "$install_dir"
 
@@ -75,11 +73,15 @@ chmod -R 750 "$install_dir"
 
 ynh_script_progression "Configuring PHP-FPM pool..."
 fpm_template=/etc/php/$YNH_PHP_VERSION/fpm/pool.d/$app.conf
-ynh_backup_if_checksum_is_different --file="$fpm_template"
-ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file=conf/php-fpm.conf | \
-    ynh_replace_string --match_string="__USER__" --replace_string="$app" | \
-    ynh_replace_string --match_string="__INSTALL_DIR__" --replace_string="$install_dir" | \
-    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" > "$fpm_template"
+
+# 1. Copy the file first (Fixes "File not found")
+cp ../conf/php-fpm.conf "$fpm_template"
+
+# 2. Modify in-place (Fixes "Pipe/Unbound variable" errors)
+ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$fpm_template"
+ynh_replace_string --match_string="__USER__" --replace_string="$app" --target_file="$fpm_template"
+ynh_replace_string --match_string="__INSTALL_DIR__" --replace_string="$install_dir" --target_file="$fpm_template"
+ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" --target_file="$fpm_template"
 
 #=================================================
 # NGINX CONFIGURATION
@@ -87,19 +89,8 @@ ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_fil
 
 ynh_script_progression "Configuring NGINX..."
 nginx_conf_path=/etc/nginx/conf.d/$domain.d/$app.conf
-ynh_backup_if_checksum_is_different --file="$nginx_conf_path"
-ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file=conf/nginx.conf | \
-    ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" | \
-    ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" | \
-    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" | \
-    ynh_replace_string --match_string="__APP__" --replace_string="$app" > "$nginx_conf_path"
 
-#=================================================
-# RELOAD SERVICES
-#=================================================
+# 1. Copy the file first
+cp ../conf/nginx.conf "$nginx_conf_path"
 
-ynh_script_progression "Reloading services..."
-ynh_systemd_action --service="php$YNH_PHP_VERSION-fpm" --action=reload
-ynh_systemd_action --service=nginx --action=reload
-
-ynh_script_progression "Installation of $app completed"
+# 2.
