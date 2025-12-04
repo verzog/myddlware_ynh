@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source _common.sh
+SOURCE_DIR="$(cd -- "$(dirname "$0")" && pwd)"
+source "$SOURCE_DIR/_common.sh"
 source /usr/share/yunohost/helpers
 
 ynh_abort_if_errors
