@@ -1,46 +1,44 @@
 #!/bin/bash
 
-## this script is only run if actual change to domain/path is detected, if you're here either $domain or $path changed
-## new location is available via $domain and $path (or $new_domain and $new_path variables if you want to be explicit)
-## old values are available via, you guessed it, $old_domain and $old_path
-
-#=================================================
-# IMPORT GENERIC HELPERS
-#=================================================
-
 source _common.sh
 source /usr/share/yunohost/helpers
 
-#=================================================
-# STOP SYSTEMD SERVICE
-#=================================================
-ynh_script_progression "Stopping $app's systemd service..."
+ynh_abort_if_errors
 
-ynh_systemctl --service="$app" --action="stop"
+#=================================================
+# RETRIEVE ARGUMENTS
+#=================================================
+
+domain=$(ynh_app_setting_get --app="$app" --key=domain)
+path_url=$(ynh_app_setting_get --app="$app" --key=path)
+phpversion=$(ynh_app_setting_get --app="$app" --key=phpversion)
+install_dir=$(ynh_app_setting_get --app="$app" --key=install_dir)
 
 #=================================================
 # MODIFY URL IN NGINX CONF
 #=================================================
-ynh_script_progression "Updating NGINX web server configuration..."
 
-# this will most likely adjust NGINX config correctly
-ynh_config_change_url_nginx
-
-#=================================================
-# SPECIFIC MODIFICATIONS
-#=================================================
-
-## do any changes to files that reference specific installation domain/path, i.e. regenerate configs etc
+ynh_script_progression "Updating NGINX configuration..."
+nginx_conf_path=/etc/nginx/conf.d/$domain.d/$app.conf
+ynh_replace_string --match_string="__DOMAIN__" --replace_string="$new_domain" --target_file=conf/nginx.conf | \
+    ynh_replace_string --match_string="__PATH__" --replace_string="$new_path" | \
+    ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" | \
+    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$phpversion" | \
+    ynh_replace_string --match_string="__APP__" --replace_string="$app" > "$nginx_conf_path"
 
 #=================================================
-# START SYSTEMD SERVICE
-#=================================================
-ynh_script_progression "Starting $app's systemd service..."
-
-ynh_systemctl --service="$app" --action="start"
-
-#=================================================
-# END OF SCRIPT
+# SAVE NEW SETTINGS
 #=================================================
 
-ynh_script_progression "Change of URL completed for $app"
+ynh_app_setting_set --app="$app" --key=domain --value="$new_domain"
+ynh_app_setting_set --app="$app" --key=path --value="$new_path"
+
+#=================================================
+# RELOAD SERVICES
+#=================================================
+
+ynh_script_progression "Reloading services..."
+ynh_systemd_action --service="php$phpversion-fpm" --action=reload
+ynh_systemd_action --service=nginx --action=reload
+
+ynh_script_progression "URL change completed"

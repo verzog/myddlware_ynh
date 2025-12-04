@@ -1,2 +1,55 @@
 #!/bin/bash
-exit 0
+
+source _common.sh
+source /usr/share/yunohost/helpers
+
+ynh_abort_if_errors
+
+#=================================================
+# LOAD SETTINGS
+#=================================================
+
+domain=$(ynh_app_setting_get --app="$app" --key=domain)
+path_url=$(ynh_app_setting_get --app="$app" --key=path)
+install_dir=$(ynh_app_setting_get --app="$app" --key=install_dir)
+phpversion=$(ynh_app_setting_get --app="$app" --key=phpversion)
+
+#=================================================
+# REMOVE NGINX CONFIGURATION
+#=================================================
+
+ynh_script_progression "Removing NGINX configuration..."
+ynh_secure_remove --file="/etc/nginx/conf.d/$domain.d/$app.conf"
+
+#=================================================
+# REMOVE PHP-FPM POOL
+#=================================================
+
+ynh_script_progression "Removing PHP-FPM pool..."
+ynh_secure_remove --file="/etc/php/$phpversion/fpm/pool.d/$app.conf"
+
+#=================================================
+# REMOVE SOURCE DIRECTORY
+#=================================================
+
+ynh_script_progression "Removing application files..."
+ynh_secure_remove --file="$install_dir"
+ynh_secure_remove --file="/var/lib/$app"
+
+#=================================================
+# REMOVE DEPENDENCIES
+#=================================================
+
+ynh_script_progression "Removing dependencies..."
+ynh_remove_app_dependencies
+
+#=================================================
+# UNREGISTER URL AND USER
+#=================================================
+
+ynh_script_progression "Cleaning up permissions..."
+ynh_webpath_remove --app="$app"
+ynh_permission_delete --permission=main
+ynh_system_user_delete --username="$app"
+
+ynh_script_progression "$app uninstalled"
