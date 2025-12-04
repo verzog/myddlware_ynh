@@ -14,6 +14,10 @@ multi_instance = true
 disk = "200M"
 ram = "512M"
 
+[requirements]
+    [requirements.ram]
+    value = "512M"
+
 
 [resources]
 
