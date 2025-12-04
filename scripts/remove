@@ -41,7 +41,9 @@ ynh_secure_remove --file="/var/lib/$app"
 #=================================================
 
 ynh_script_progression "Removing dependencies..."
-ynh_remove_app_dependencies
+if type ynh_remove_app_dependencies >/dev/null 2>&1; then
+    ynh_remove_app_dependencies
+fi
 
 #=================================================
 # UNREGISTER URL AND USER
