@@ -39,7 +39,8 @@ disk = "200M"
     [resources.data_dir]
     default = "/var/lib/{app}"
 
-    [resources.system_user]
+[resources.system_user]
+name = "myddleware"
 
     [resources.permissions]
         [resources.permissions.main]
