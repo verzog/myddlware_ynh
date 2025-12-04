@@ -8,10 +8,12 @@ app="$YNH_APP_INSTANCE_NAME"
 
 # Define installation and data directories with safe defaults so the script
 # does not fail when strict mode is enabled upstream.
-YNH_APP_INSTALL_DIR=${YNH_APP_INSTALL_DIR:-/var/www/$app}
+YNH_APP_INSTALL_BASEDIR=${YNH_APP_INSTALL_BASEDIR:-/var/www}
+YNH_APP_INSTALL_DIR=${YNH_APP_INSTALL_DIR:-${YNH_APP_INSTALL_BASEDIR%/}/$app}
 YNH_APP_DATA_DIR=${YNH_APP_DATA_DIR:-/var/lib/$app}
 
 export YNH_APP_INSTANCE_NAME="$app"
+export YNH_APP_INSTALL_BASEDIR
 export YNH_APP_INSTALL_DIR
 export YNH_APP_DATA_DIR
 
