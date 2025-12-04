@@ -14,13 +14,8 @@ multi_instance = true
 disk = "200M"
 
     [integration.ram]
-    value = "512M"
-
-[requirements]
-    [requirements.ram]
-    value = "512M"
-    include_swap = false
-
+    build = "512M"
+    runtime = "512M"
 
 [resources]
 
