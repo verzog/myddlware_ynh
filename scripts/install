@@ -32,9 +32,6 @@ ynh_app_setting_set --app="$app" --key=domain --value="$domain"
 ynh_app_setting_set --app="$app" --key=path --value="$path_url"
 ynh_app_setting_set --app="$app" --key=phpversion --value="$YNH_PHP_VERSION"
 
-install_dir=/var/www/$app
-data_dir=/var/lib/$app
-
 ynh_app_setting_set --app="$app" --key=install_dir --value="$install_dir"
 ynh_app_setting_set --app="$app" --key=data_dir --value="$data_dir"
 
