@@ -17,13 +17,27 @@ ynh_abort_if_errors
 
 domain=$YNH_APP_ARG_DOMAIN
 path_url=$YNH_APP_ARG_PATH
+app=$YNH_APP_INSTANCE_NAME
+
+# FIX: Force the correct install directory path
+install_dir="/var/www/$app"
+data_dir="/var/lib/$app"
 
 #=================================================
 # CHECK ARGUMENTS
 #=================================================
-# REMOVED: ynh_check_domain_path (Handled by Manifest)
 
 ynh_script_progression "Validating installation parameters..."
+
+#=================================================
+# SETUP DATABASE (REQUIRED)
+#=================================================
+ynh_script_progression "Setting up database..."
+db_name=$(ynh_sanitize_dbid --db_name=$app)
+db_user=$(ynh_sanitize_dbid --db_name=$app)
+db_pwd=$(ynh_string_random 20)
+
+ynh_mysql_setup_db --db_user=$db_user --db_name=$db_name --db_pwd=$db_pwd
 
 #=================================================
 # STORE SETTINGS
@@ -32,14 +46,12 @@ ynh_script_progression "Validating installation parameters..."
 ynh_app_setting_set --app="$app" --key=domain --value="$domain"
 ynh_app_setting_set --app="$app" --key=path --value="$path_url"
 ynh_app_setting_set --app="$app" --key=phpversion --value="$YNH_PHP_VERSION"
-# install_dir and data_dir are standard, but keeping them in settings is fine
 ynh_app_setting_set --app="$app" --key=install_dir --value="$install_dir"
 ynh_app_setting_set --app="$app" --key=data_dir --value="$data_dir"
-
-#=================================================
-# CREATE SYSTEM USER
-#=================================================
-# REMOVED: ynh_system_user_create (Handled by Manifest [resources.system_user])
+# Save DB credentials so the app can use them later (e.g. in a config file)
+ynh_app_setting_set --app=$app --key=db_name --value=$db_name
+ynh_app_setting_set --app=$app --key=db_user --value=$db_user
+ynh_app_setting_set --app=$app --key=db_pwd --value=$db_pwd
 
 #=================================================
 # INSTALL DEPENDENCIES
@@ -49,11 +61,11 @@ ynh_script_progression "Installing required dependencies..."
 ynh_exec_warn_less ynh_install_app_dependencies "${pkg_dependencies[@]}"
 
 #=================================================
-# SETUP SOURCE
+# FINALIZE PERMISSIONS
 #=================================================
-# REMOVED: ynh_setup_source (Handled by Manifest [resources.sources])
 
-# We still ensure ownership is correct on the files extracted by the manifest
+# The manifest extracts the files, but we ensure ownership here
+# explicitly using the file system path
 chown -R "$app":www-data "$install_dir"
 chmod -R 750 "$install_dir"
 
@@ -81,12 +93,6 @@ ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --targ
     ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" | \
     ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" | \
     ynh_replace_string --match_string="__APP__" --replace_string="$app" > "$nginx_conf_path"
-
-#=================================================
-# SETUP PERMISSIONS
-#=================================================
-# REMOVED: ynh_webpath_register (Handled by Manifest)
-# REMOVED: ynh_permission_create (Handled by Manifest)
 
 #=================================================
 # RELOAD SERVICES
