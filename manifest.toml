@@ -19,6 +19,7 @@ disk = "200M"
 [requirements]
     [requirements.ram]
     value = "512M"
+    build = "512M"
     include_swap = false
 
 
