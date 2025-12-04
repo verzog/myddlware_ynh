@@ -32,6 +32,8 @@ disk = "200M"
     default = "/var/lib/{app}"
 
     [resources.system_user]
+    name = "{app}"
+    home = "/var/lib/{app}"
 
     [resources.permissions]
         [resources.permissions.main]
