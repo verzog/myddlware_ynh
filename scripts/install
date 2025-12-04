@@ -21,9 +21,9 @@ path_url=$YNH_APP_ARG_PATH
 #=================================================
 # CHECK ARGUMENTS
 #=================================================
+# REMOVED: ynh_check_domain_path (Handled by Manifest)
 
 ynh_script_progression "Validating installation parameters..."
-ynh_check_domain_path --domain="$domain" --path_url="$path_url"
 
 #=================================================
 # STORE SETTINGS
@@ -32,16 +32,14 @@ ynh_check_domain_path --domain="$domain" --path_url="$path_url"
 ynh_app_setting_set --app="$app" --key=domain --value="$domain"
 ynh_app_setting_set --app="$app" --key=path --value="$path_url"
 ynh_app_setting_set --app="$app" --key=phpversion --value="$YNH_PHP_VERSION"
-
+# install_dir and data_dir are standard, but keeping them in settings is fine
 ynh_app_setting_set --app="$app" --key=install_dir --value="$install_dir"
 ynh_app_setting_set --app="$app" --key=data_dir --value="$data_dir"
 
 #=================================================
 # CREATE SYSTEM USER
 #=================================================
-
-ynh_script_progression "Creating dedicated system user..."
-ynh_system_user_create --username="$app" --home_dir="$data_dir"
+# REMOVED: ynh_system_user_create (Handled by Manifest [resources.system_user])
 
 #=================================================
 # INSTALL DEPENDENCIES
@@ -53,10 +51,9 @@ ynh_exec_warn_less ynh_install_app_dependencies "${pkg_dependencies[@]}"
 #=================================================
 # SETUP SOURCE
 #=================================================
+# REMOVED: ynh_setup_source (Handled by Manifest [resources.sources])
 
-ynh_script_progression "Retrieving Myddleware sources..."
-ynh_setup_source --source_id=main --dest_dir="$install_dir"
-
+# We still ensure ownership is correct on the files extracted by the manifest
 chown -R "$app":www-data "$install_dir"
 chmod -R 750 "$install_dir"
 
@@ -88,10 +85,8 @@ ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --targ
 #=================================================
 # SETUP PERMISSIONS
 #=================================================
-
-ynh_script_progression "Registering web path and permissions..."
-ynh_webpath_register --app="$app" --domain="$domain" --path_url="$path_url"
-ynh_permission_create --permission=main --url="$path_url" --allowed="visitors" --show_tile
+# REMOVED: ynh_webpath_register (Handled by Manifest)
+# REMOVED: ynh_permission_create (Handled by Manifest)
 
 #=================================================
 # RELOAD SERVICES
