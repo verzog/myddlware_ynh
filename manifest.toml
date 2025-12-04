@@ -24,25 +24,32 @@ disk = "200M"
     build = "512M"
     include_swap = false
 
-
+# ==========================================
+# RESOURCES SECTION
+# ==========================================
 [resources]
 
-    [resources.sources]
+    # --- 1. SYSTEM USER (MUST BE FIRST) ---
+    # This creates the user so subsequent directories can be owned by it.
+    [resources.system_user]
+    name = "{app}"
+    home = "/var/lib/{app}"
 
+    # --- 2. DATA DIRECTORY ---
+    [resources.data_dir]
+    default = "/var/lib/{app}"
+
+    # --- 3. SOURCES ---
+    [resources.sources]
         [resources.sources.main]
         url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.zip"
         sha256 = "868846bd790bd6893d45684bc4838e6ac486b481eee4c2123317a413ac1beba9"
 
+    # --- 4. INSTALL DIRECTORY ---
     [resources.install_dir]
     default = "/var/www/{app}"
 
-    [resources.data_dir]
-    default = "/var/lib/{app}"
-
-[resources.system_user]
-name = "{app}"
-home = "/var/lib/{app}"
-
+    # --- 5. PERMISSIONS ---
     [resources.permissions]
         [resources.permissions.main]
         url = "/"
