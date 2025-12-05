@@ -47,6 +47,8 @@ disk = "200M"
 
     # --- 4. INSTALL DIRECTORY ---
     [resources.install_dir]
+    type = "install_dir"
+    source = "main"
     default = "/var/www/{app}"
 
     # --- 5. PERMISSIONS ---
