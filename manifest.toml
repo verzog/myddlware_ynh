@@ -3,10 +3,10 @@ packaging_format = 2
 id = "myddlware"
 name = "Myddleware"
 
-version = "1.0.1~ynh1"
+version = "4.2.2~ynh1"
 
 [upstream]
-version = "4.0.8"
+version = "4.2.2"
 license = "AGPL-3.0-or-later"
 website = "https://www.myddleware.com/"
 admindoc = "https://github.com/Myddleware/myddleware/wiki"
