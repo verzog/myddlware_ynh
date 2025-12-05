@@ -1,64 +1,48 @@
 #!/bin/bash
 
+#=================================================
+# IMPORT GENERIC HELPERS
+#=================================================
+
 SOURCE_DIR="$(cd -- "$(dirname "$0")" && pwd)"
 source "$SOURCE_DIR/_common.sh"
 source /usr/share/yunohost/helpers
 
+# Exit on command errors
 ynh_abort_if_errors
 
 #=================================================
-# LOAD SETTINGS
+# RETRIEVE ARGUMENTS
 #=================================================
 
-domain=$(ynh_app_setting_get --app="$app" --key=domain)
-path_url=$(ynh_app_setting_get --app="$app" --key=path)
-install_dir=$(ynh_app_setting_get --app="$app" --key=install_dir)
-phpversion=$(ynh_app_setting_get --app="$app" --key=phpversion)
+app=$YNH_APP_INSTANCE_NAME
+
+#=================================================
+# REMOVE DATABASE
+#=================================================
+
+# Load DB settings if they were saved
+db_name=$(ynh_app_setting_get --app="$app" --key=db_name)
+db_user=$(ynh_app_setting_get --app="$app" --key=db_user)
+
+if [ -n "$db_name" ]; then
+    ynh_script_progression "Removing database..."
+    # Drop the database and the user
+    ynh_mysql_remove_db --db_user="$db_user" --db_name="$db_name"
+fi
+
+#=================================================
+# REMOVE PHP-FPM CONFIGURATION
+#=================================================
+
+# The manifest removes the files, but we should reload the service
+ynh_script_progression "Reloading PHP-FPM..."
+systemctl reload "php$YNH_PHP_VERSION-fpm"
 
 #=================================================
 # REMOVE NGINX CONFIGURATION
 #=================================================
 
-ynh_script_progression "Removing NGINX configuration..."
-ynh_secure_remove --file="/etc/nginx/conf.d/$domain.d/$app.conf"
-
-#=================================================
-# REMOVE PHP-FPM POOL
-#=================================================
-
-ynh_script_progression "Removing PHP-FPM pool..."
-ynh_secure_remove --file="/etc/php/$phpversion/fpm/pool.d/$app.conf"
-
-#=================================================
-# REMOVE SOURCE DIRECTORY
-#=================================================
-
-ynh_script_progression "Removing application files..."
-ynh_secure_remove --file="$install_dir"
-ynh_secure_remove --file="/var/lib/$app"
-
-#=================================================
-# REMOVE DEPENDENCIES
-#=================================================
-
-ynh_script_progression "Removing dependencies..."
-if type ynh_remove_app_dependencies >/dev/null 2>&1; then
-    ynh_remove_app_dependencies
-elif type ynh_apt_remove >/dev/null 2>&1; then
-    ynh_apt_remove --purge "${pkg_dependencies[@]}"
-    ynh_apt_autoremove --purge
-else
-    apt-get --assume-yes --quiet remove --purge "${pkg_dependencies[@]}"
-    apt-get --assume-yes --quiet autoremove --purge
-fi
-
-#=================================================
-# UNREGISTER URL AND USER
-#=================================================
-
-ynh_script_progression "Cleaning up permissions..."
-ynh_webpath_remove --app="$app"
-ynh_permission_delete --permission=main
-ynh_system_user_delete --username="$app"
-
-ynh_script_progression "$app uninstalled"
+# The manifest removes the config file, but we must reload Nginx
+ynh_script_progression "Reloading NGINX..."
+systemctl reload nginx
