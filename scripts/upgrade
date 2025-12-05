@@ -1,61 +1,66 @@
 #!/bin/bash
+set -eu
 
-SOURCE_DIR="$(cd -- "$(dirname "$0")" && pwd)"
-source "$SOURCE_DIR/_common.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source /usr/share/yunohost/helpers
+source "$SCRIPT_DIR/_common.sh"
 
 ynh_abort_if_errors
 
-#=================================================
-# LOAD SETTINGS
-#=================================================
-
+app=$YNH_APP_INSTANCE_NAME
+final_path=$(ynh_app_setting_get --app="$app" --key=final_path)
 domain=$(ynh_app_setting_get --app="$app" --key=domain)
-path_url=$(ynh_app_setting_get --app="$app" --key=path)
-install_dir=$(ynh_app_setting_get --app="$app" --key=install_dir)
 phpversion=$(ynh_app_setting_get --app="$app" --key=phpversion)
+db_name=$(ynh_app_setting_get --app="$app" --key=db_name)
+db_user=$(ynh_app_setting_get --app="$app" --key=db_user)
+db_pwd=$(ynh_app_setting_get --app="$app" --key=db_pwd)
 
-#=================================================
-# ENSURE DEPENDENCIES
-#=================================================
+ynh_script_progression --message="Backing up existing installation" --time --weight=1
+ynh_backup --src_path="$final_path"
+ynh_backup --src_path="/etc/nginx/conf.d/$domain.d/$app.conf"
+ynh_backup --src_path="/etc/php/$phpversion/fpm/pool.d/$app.conf"
 
-ynh_script_progression "Upgrading dependencies..."
-ynh_exec_warn_less ynh_install_app_dependencies "${pkg_dependencies[@]}"
+tmp_env=$(mktemp)
+if [ -f "$final_path/.env.local" ]; then
+    cp "$final_path/.env.local" "$tmp_env"
+fi
 
-#=================================================
-# UPDATE SOURCE FILES
-#=================================================
+ynh_script_progression --message="Updating source files" --time --weight=1
+ynh_setup_source --dest_dir="$final_path"
 
-ynh_script_progression "Updating Myddleware sources..."
-ynh_setup_source --source_id=main --dest_dir="$install_dir" --full_replace
-chown -R "$app":www-data "$install_dir"
-chmod -R 750 "$install_dir"
+ynh_script_progression --message="Restoring environment configuration" --time --weight=1
+if [ -f "$tmp_env" ]; then
+    cp "$tmp_env" "$final_path/.env.local"
+    chown "$app:$app" "$final_path/.env.local"
+    chmod 640 "$final_path/.env.local"
+fi
 
-#=================================================
-# UPDATE CONFIGURATIONS
-#=================================================
+ynh_script_progression --message="Refreshing PHP-FPM pool" --time --weight=1
+ynh_add_fpm_config --phpversion="$phpversion" --config="$SCRIPT_DIR/../conf/php-fpm.conf"
 
-ynh_script_progression "Refreshing PHP-FPM pool..."
-fpm_template=/etc/php/$phpversion/fpm/pool.d/$app.conf
-ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file=conf/php-fpm.conf | \
-    ynh_replace_string --match_string="__USER__" --replace_string="$app" | \
-    ynh_replace_string --match_string="__INSTALL_DIR__" --replace_string="$install_dir" | \
-    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$phpversion" > "$fpm_template"
+ynh_script_progression --message="Refreshing NGINX configuration" --time --weight=1
+nginx_conf="/etc/nginx/conf.d/$domain.d/$app.conf"
+ynh_add_config --template="$SCRIPT_DIR/../conf/nginx.conf" --destination="$nginx_conf"
+ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file="$nginx_conf"
+ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" --target_file="$nginx_conf"
+ynh_replace_string --match_string="__FINALPATH__" --replace_string="$final_path" --target_file="$nginx_conf"
+ynh_replace_string --match_string="__PHPVERSION__" --replace_string="$phpversion" --target_file="$nginx_conf"
+ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$nginx_conf"
 
-ynh_script_progression "Refreshing NGINX configuration..."
-nginx_conf_path=/etc/nginx/conf.d/$domain.d/$app.conf
-ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file=conf/nginx.conf | \
-    ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" | \
-    ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" | \
-    ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$phpversion" | \
-    ynh_replace_string --match_string="__APP__" --replace_string="$app" > "$nginx_conf_path"
+ynh_script_progression --message="Updating Composer dependencies" --time --weight=1
+ynh_install_composer --phpversion="$phpversion" --workdir="$final_path"
+ynh_composer_exec --phpversion="$phpversion" --workdir="$final_path" --commands="install --no-dev --optimize-autoloader"
 
-#=================================================
-# RELOAD SERVICES
-#=================================================
+ynh_script_progression --message="Running database migrations if available" --time --weight=1
+if [ -x "$final_path/bin/console" ]; then
+    sudo -u "$app" YNH_CONFIG_DIR="$final_path" php$phpversion "$final_path/bin/console" doctrine:migrations:migrate --no-interaction || true
+fi
 
-ynh_script_progression "Reloading services..."
-ynh_systemd_action --service="php$phpversion-fpm" --action=reload
-ynh_systemd_action --service=nginx --action=reload
+ynh_script_progression --message="Applying permissions" --time --weight=1
+chown -R "$app:$app" "$final_path"
 
-ynh_script_progression "Upgrade completed"
+ynh_script_progression --message="Reloading services" --time --weight=1
+ynh_systemd_action --service_name="php${phpversion}-fpm" --action="reload" --log_path="/var/log/php${phpversion}-fpm/$app.log" || true
+ynh_systemd_action --service_name="nginx" --action="reload" || true
+
+ynh_script_success

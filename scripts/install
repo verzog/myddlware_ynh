@@ -1,135 +1,108 @@
 #!/bin/bash
+set -eu
 
-#=================================================
-# IMPORT GENERIC HELPERS
-#=================================================
-
-SOURCE_DIR="$(cd -- "$(dirname "$0")" && pwd)"
-source "$SOURCE_DIR/_common.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source /usr/share/yunohost/helpers
+source "$SCRIPT_DIR/_common.sh"
 
-# Exit on command errors
 ynh_abort_if_errors
 
 #=================================================
-# RETRIEVE ARGUMENTS
+# CHECKING ARGUMENTS
 #=================================================
-
-domain=$YNH_APP_ARG_DOMAIN
-path_url=$YNH_APP_ARG_PATH
-app=$YNH_APP_INSTANCE_NAME
-
-# Force the correct install directory path
-install_dir="/var/www/$app"
-data_dir="/var/lib/$app"
-
-#=================================================
-# CHECK ARGUMENTS
-#=================================================
-
-ynh_script_progression "Validating installation parameters..."
-
-#=================================================
-# FIX: MOVE FILES FROM SUBDIRECTORY (The "Empty Folder" Fix)
-#=================================================
-
-# Sometimes extracting the zip puts files in a subfolder (e.g. myddleware-4.2.2).
-# If the main entry point is missing in the root but present in a child folder, move the files up.
-if [[ -d "$install_dir" && ! -f "$install_dir/index.php" ]]; then
-    subfolder=$(find "$install_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-
-    if [[ -n "$subfolder" ]]; then
-        ynh_script_progression "Moving files from subfolder $(basename "$subfolder")..."
-        mv "$subfolder"/* "$install_dir/" 2>/dev/null
-        mv "$subfolder"/.* "$install_dir/" 2>/dev/null
-        rmdir "$subfolder"
-    fi
-fi
-
-#=================================================
-# SETUP DATABASE
-#=================================================
-ynh_script_progression "Setting up database..."
-db_name=$(ynh_sanitize_dbid --db_name=$app)
-db_user=$(ynh_sanitize_dbid --db_name=$app)
-db_pwd=$(ynh_string_random 20)
-
-# Drop existing DB if retrying installation (Cleanup)
-ynh_mysql_execute_as_root --sql="DROP DATABASE IF EXISTS $db_name; DROP USER IF EXISTS '$db_user'@'localhost';"
-
-# Create the database
-ynh_mysql_setup_db --db_user=$db_user --db_name=$db_name --db_pwd=$db_pwd
-
-#=================================================
-# STORE SETTINGS
-#=================================================
+ynh_script_progression --message="Validating installation parameters" --time --weight=1
+ynh_webpath_available --domain="$domain" --path_url="$path_url"
+ynh_webpath_register --domain="$domain" --path_url="$path_url" --app="$app"
 
 ynh_app_setting_set --app="$app" --key=domain --value="$domain"
 ynh_app_setting_set --app="$app" --key=path --value="$path_url"
-ynh_app_setting_set --app="$app" --key=phpversion --value="$YNH_PHP_VERSION"
-ynh_app_setting_set --app="$app" --key=install_dir --value="$install_dir"
-ynh_app_setting_set --app="$app" --key=data_dir --value="$data_dir"
+ynh_app_setting_set --app="$app" --key=admin --value="$admin_mail"
+ynh_app_setting_set --app="$app" --key=is_public --value="$is_public"
+ynh_app_setting_set --app="$app" --key=final_path --value="$final_path"
+ynh_app_setting_set --app="$app" --key=phpversion --value="$phpversion"
+
+db_pwd=$(ynh_string_random --length=32)
 ynh_app_setting_set --app="$app" --key=db_name --value="$db_name"
 ynh_app_setting_set --app="$app" --key=db_user --value="$db_user"
 ynh_app_setting_set --app="$app" --key=db_pwd --value="$db_pwd"
 
 #=================================================
-# INSTALL DEPENDENCIES
+# SYSTEM USER AND DIRECTORIES
 #=================================================
+ynh_script_progression --message="Creating system user" --time --weight=1
+ynh_system_user_create --username="$app"
 
-ynh_script_progression "Installing required dependencies..."
-ynh_exec_warn_less ynh_install_app_dependencies "${pkg_dependencies[@]}"
-
-#=================================================
-# FINALIZE PERMISSIONS
-#=================================================
-
-# The manifest extracts the files, but we ensure ownership here
-chown -R "$app":www-data "$install_dir"
-chmod -R 750 "$install_dir"
+ynh_script_progression --message="Preparing installation directory" --time --weight=1
+ynh_secure_remove --file="$final_path"
+mkdir -p "$final_path"
+chown -R "$app:$app" "$final_path"
 
 #=================================================
-# PHP-FPM CONFIGURATION
+# FETCH AND PREPARE SOURCES
 #=================================================
-
-ynh_script_progression "Configuring PHP-FPM pool..."
-fpm_template=/etc/php/$YNH_PHP_VERSION/fpm/pool.d/$app.conf
-conf_dir="$SOURCE_DIR/../conf"
-
-# 1. Copy the file first
-cp "$conf_dir/php-fpm.conf" "$fpm_template"
-
-# 2. Modify in-place
-ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$fpm_template"
-ynh_replace_string --match_string="__USER__" --replace_string="$app" --target_file="$fpm_template"
-ynh_replace_string --match_string="__INSTALL_DIR__" --replace_string="$install_dir" --target_file="$fpm_template"
-ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" --target_file="$fpm_template"
+ynh_script_progression --message="Fetching Myddleware sources" --time --weight=1
+ynh_setup_source --dest_dir="$final_path"
 
 #=================================================
-# NGINX CONFIGURATION
+# INSTALL COMPOSER DEPENDENCIES
 #=================================================
+ynh_script_progression --message="Installing Composer" --time --weight=1
+ynh_install_composer --phpversion="$phpversion" --workdir="$final_path"
 
-ynh_script_progression "Configuring NGINX..."
-nginx_conf_path=/etc/nginx/conf.d/$domain.d/$app.conf
-
-# 1. Copy the file first
-cp "$conf_dir/nginx.conf" "$nginx_conf_path"
-
-# 2. Modify in-place
-ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file="$nginx_conf_path"
-ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" --target_file="$nginx_conf_path"
-ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" --target_file="$nginx_conf_path"
-ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" --target_file="$nginx_conf_path"
-ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$nginx_conf_path"
+ynh_script_progression --message="Installing PHP dependencies" --time --weight=1
+ynh_composer_exec --phpversion="$phpversion" --workdir="$final_path" --commands="install --no-dev --optimize-autoloader"
 
 #=================================================
-# RELOAD SERVICES
+# DATABASE
 #=================================================
+ynh_script_progression --message="Creating MariaDB database" --time --weight=1
+ynh_mysql_db_create --db_user="$db_user" --db_name="$db_name" --db_pwd="$db_pwd"
 
-ynh_script_progression "Reloading services..."
+#=================================================
+# APPLICATION CONFIGURATION
+#=================================================
+ynh_script_progression --message="Generating application configuration" --time --weight=1
+mkdir -p "$final_path/var/cache" "$final_path/var/log"
+chown -R "$app:$app" "$final_path/var"
 
-# FIX: Use standard systemctl commands instead of the failing helper
-systemctl reload "php$YNH_PHP_VERSION-fpm"
-systemctl reload nginx
+secret=$(openssl rand -hex 32)
+cat > "$final_path/.env.local" <<ENV
+APP_ENV=prod
+APP_SECRET=$secret
+DATABASE_URL="mysql://$db_user:$db_pwd@localhost:3306/$db_name"
+MAILER_URL=null://localhost
+ENV
+chown "$app:$app" "$final_path/.env.local"
+chmod 640 "$final_path/.env.local"
 
-ynh_script_progression "Installation of $app completed"
+#=================================================
+# PHP-FPM AND NGINX CONFIGURATION
+#=================================================
+ynh_script_progression --message="Configuring PHP-FPM" --time --weight=1
+ynh_add_fpm_config --phpversion="$phpversion" --config="$SCRIPT_DIR/../conf/php-fpm.conf"
+
+ynh_script_progression --message="Configuring NGINX" --time --weight=1
+nginx_conf="/etc/nginx/conf.d/$domain.d/$app.conf"
+ynh_add_config --template="$SCRIPT_DIR/../conf/nginx.conf" --destination="$nginx_conf"
+ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file="$nginx_conf"
+ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" --target_file="$nginx_conf"
+ynh_replace_string --match_string="__FINALPATH__" --replace_string="$final_path" --target_file="$nginx_conf"
+ynh_replace_string --match_string="__PHPVERSION__" --replace_string="$phpversion" --target_file="$nginx_conf"
+ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$nginx_conf"
+
+#=================================================
+# PERMISSIONS
+#=================================================
+ynh_script_progression --message="Applying permissions" --time --weight=1
+if [ "$is_public" = "1" ] || [ "$is_public" = "true" ]; then
+    ynh_permission_update --permission=main --add=visitors
+fi
+
+#=================================================
+# SERVICE RELOAD
+#=================================================
+ynh_script_progression --message="Reloading services" --time --weight=1
+ynh_systemd_action --service_name="php${phpversion}-fpm" --action="reload" --log_path="/var/log/php${phpversion}-fpm/$app.log" || true
+ynh_systemd_action --service_name="nginx" --action="reload" || true
+
+ynh_script_success
