@@ -63,8 +63,9 @@ composer = true
   [resources.sources]
 
     [resources.sources.main]
-    url = "https://github.com/Myddleware/myddleware/releases/download/4.0.8/myddleware.zip"
-    sha256 = "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
+url = "https://github.com/Myddleware/myddleware/archive/refs/tags/4.0.8.zip"
+sha256 = "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed"
+
 
   [resources.system_user]
   # Created during install
