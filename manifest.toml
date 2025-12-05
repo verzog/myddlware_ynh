@@ -1,66 +1,74 @@
 packaging_format = 2
 
-id = "myddleware"
+id = "myddlware"
 name = "Myddleware"
-description.en = "Open-source data integration platform"
-version = "4.2.2~ynh6"
+
+version = "1.0.0~ynh1"
+upstream.version = "4.0.8"
 
 maintainers = ["verzog"]
 
-[integration]
-yunohost = ">= 12.0"
-architectures = ["amd64", "arm64"]
-multi_instance = true
-disk = "200M"
+[description]
+en = "Open-source middleware to connect and sync data across business applications"
+fr = "Middleware libre pour connecter et synchroniser des données entre applications"
 
-    [integration.ram]
-    build = "512M"
-    runtime = "512M"
-    value = "512M"
+[upstream]
+license = "AGPL-3.0-or-later"
+website = "https://www.myddleware.com/"
+admindoc = "https://github.com/Myddleware/myddleware/wiki"
+userdoc = "https://github.com/Myddleware/myddleware/wiki"
+code = "https://github.com/Myddleware/myddleware"
+
+[integration]
+yunohost = ">= 11.2"
+architectures = ["amd64", "armhf", "arm64"]
+multi_instance = true
+ldap = "not_relevant"
+sso = "false"
+dns = "automatic"
+ram.build = "256M"
+ram.runtime = "512M"
+disk = "1200M"
 
 [requirements]
-    [requirements.ram]
-    value = "512M"
-    build = "512M"
-    include_swap = false
+yunohost = ">= 11.2"
+php = ">= 8.2"
+mysql = true
+composer = true
 
-# ==========================================
-# RESOURCES SECTION
-# ==========================================
+[arguments]
+  [arguments.install]
+    [arguments.install.domain]
+    type = "domain"
+    ask = "Select the domain where Myddleware will be installed"
+
+    [arguments.install.path]
+    type = "path"
+    ask = "Select the path where Myddleware will be installed"
+    default = "/myddlware"
+
+    [arguments.install.admin]
+    type = "string"
+    ask = "Administrator email for Myddleware"
+
+    [arguments.install.is_public]
+    type = "boolean"
+    ask = "Should Myddleware be accessible to the public?"
+    default = true
+
 [resources]
-
-    # --- 1. SYSTEM USER (MUST BE FIRST) ---
-    # This creates the user so subsequent directories can be owned by it.
-    [resources.system_user]
-    name = "{app}"
-    home = "/var/lib/{app}"
-
-    # --- 2. DATA DIRECTORY ---
-    [resources.data_dir]
-    default = "/var/lib/{app}"
-
-    # --- 3. SOURCES ---
     [resources.sources]
         [resources.sources.main]
-        url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.zip"
-        sha256 = "868846bd790bd6893d45684bc4838e6ac486b481eee4c2123317a413ac1beba9"
+        url = "https://github.com/Myddleware/myddleware/releases/download/4.0.8/myddleware.zip"
+        sha256 = "<ADD_SHA256>"
 
-    # --- 4. INSTALL DIRECTORY ---
+    [resources.system_user]
+    # Created during install
+
     [resources.install_dir]
-    type = "install_dir"
-    source = "main"
-    default = "/var/www/{app}"
+    path = "/var/www/myddlware"
 
-    # --- 5. PERMISSIONS ---
     [resources.permissions]
-        [resources.permissions.main]
-        url = "/"
-        allowed = "visitors"
-
-[install]
-    [install.domain]
-    type = "domain"
-
-    [install.path]
-    type = "path"
-    default = "/myddleware"
+      [resources.permissions.main]
+      url = "/"
+      allowed = "visitors"

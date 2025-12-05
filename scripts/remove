@@ -1,48 +1,35 @@
 #!/bin/bash
+set -eu
 
-#=================================================
-# IMPORT GENERIC HELPERS
-#=================================================
-
-SOURCE_DIR="$(cd -- "$(dirname "$0")" && pwd)"
-source "$SOURCE_DIR/_common.sh"
 source /usr/share/yunohost/helpers
 
-# Exit on command errors
 ynh_abort_if_errors
 
-#=================================================
-# RETRIEVE ARGUMENTS
-#=================================================
-
 app=$YNH_APP_INSTANCE_NAME
-
-#=================================================
-# REMOVE DATABASE
-#=================================================
-
-# Load DB settings if they were saved
+final_path=$(ynh_app_setting_get --app="$app" --key=final_path)
+domain=$(ynh_app_setting_get --app="$app" --key=domain)
+phpversion=$(ynh_app_setting_get --app="$app" --key=phpversion)
 db_name=$(ynh_app_setting_get --app="$app" --key=db_name)
 db_user=$(ynh_app_setting_get --app="$app" --key=db_user)
+db_pwd=$(ynh_app_setting_get --app="$app" --key=db_pwd)
 
-if [ -n "$db_name" ]; then
-    ynh_script_progression "Removing database..."
-    # Drop the database and the user
-    ynh_mysql_remove_db --db_user="$db_user" --db_name="$db_name"
-fi
+ynh_script_progression --message="Removing NGINX configuration" --time --weight=1
+ynh_secure_remove --file="/etc/nginx/conf.d/$domain.d/$app.conf"
 
-#=================================================
-# REMOVE PHP-FPM CONFIGURATION
-#=================================================
+ynh_script_progression --message="Removing PHP-FPM pool" --time --weight=1
+ynh_secure_remove --file="/etc/php/$phpversion/fpm/pool.d/$app.conf"
 
-# The manifest removes the files, but we should reload the service
-ynh_script_progression "Reloading PHP-FPM..."
-systemctl reload "php$YNH_PHP_VERSION-fpm"
+ynh_script_progression --message="Dropping database" --time --weight=1
+ynh_mysql_remove_db --db_user="$db_user" --db_name="$db_name"
 
-#=================================================
-# REMOVE NGINX CONFIGURATION
-#=================================================
+ynh_script_progression --message="Removing application files" --time --weight=1
+ynh_secure_remove --file="$final_path"
 
-# The manifest removes the config file, but we must reload Nginx
-ynh_script_progression "Reloading NGINX..."
-systemctl reload nginx
+ynh_script_progression --message="Deleting system user" --time --weight=1
+ynh_system_user_delete --username="$app"
+
+ynh_script_progression --message="Reloading services" --time --weight=1
+ynh_systemd_action --service_name="php${phpversion}-fpm" --action="reload" --log_path="/var/log/php${phpversion}-fpm/$app.log" || true
+ynh_systemd_action --service_name="nginx" --action="reload" || true
+
+ynh_script_success
