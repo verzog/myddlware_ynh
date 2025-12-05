@@ -63,8 +63,8 @@ composer = true
   [resources.sources]
 
     [resources.sources.main]
-url = "https://github.com/Myddleware/myddleware/archive/refs/tags/4.0.8.zip"
-sha256 = "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed"
+url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.2.2.zip"
+sha256 = "868846bd790bd6893d45684bc4838e6ac486b481eee4c2123317a413ac1beba9"
 
 
   [resources.system_user]
