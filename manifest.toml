@@ -3,7 +3,7 @@ packaging_format = 2
 id = "myddlware"
 name = "Myddleware"
 
-version = "1.0.0~ynh1"
+version = "1.0.1~ynh1"
 
 [upstream]
 version = "4.0.8"
