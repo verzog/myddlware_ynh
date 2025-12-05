@@ -4,20 +4,20 @@ id = "myddlware"
 name = "Myddleware"
 
 version = "1.0.0~ynh1"
-upstream.version = "4.0.8"
+
+[upstream]
+version = "4.0.8"
+license = "AGPL-3.0-or-later"
+website = "https://www.myddleware.com/"
+admindoc = "https://github.com/Myddleware/myddleware/wiki"
+userdoc = "https://github.com/Myddleware/myddleware/wiki"
+code = "https://github.com/Myddleware/myddleware"
 
 maintainers = ["verzog"]
 
 [description]
 en = "Open-source middleware to connect and sync data across business applications"
 fr = "Middleware libre pour connecter et synchroniser des données entre applications"
-
-[upstream]
-license = "AGPL-3.0-or-later"
-website = "https://www.myddleware.com/"
-admindoc = "https://github.com/Myddleware/myddleware/wiki"
-userdoc = "https://github.com/Myddleware/myddleware/wiki"
-code = "https://github.com/Myddleware/myddleware"
 
 [integration]
 yunohost = ">= 11.2"
@@ -37,7 +37,9 @@ mysql = true
 composer = true
 
 [arguments]
+
   [arguments.install]
+
     [arguments.install.domain]
     type = "domain"
     ask = "Select the domain where Myddleware will be installed"
@@ -57,18 +59,20 @@ composer = true
     default = true
 
 [resources]
-    [resources.sources]
-        [resources.sources.main]
-        url = "https://github.com/Myddleware/myddleware/releases/download/4.0.8/myddleware.zip"
-        sha256 = "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
 
-    [resources.system_user]
-    # Created during install
+  [resources.sources]
 
-    [resources.install_dir]
-    path = "/var/www/myddlware"
+    [resources.sources.main]
+    url = "https://github.com/Myddleware/myddleware/releases/download/4.0.8/myddleware.zip"
+    sha256 = "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5"
 
-    [resources.permissions]
-      [resources.permissions.main]
-      url = "/"
-      allowed = "visitors"
+  [resources.system_user]
+  # Created during install
+
+  [resources.install_dir]
+  path = "/var/www/myddlware"
+
+  [resources.permissions]
+    [resources.permissions.main]
+    url = "/"
+    allowed = "visitors"
