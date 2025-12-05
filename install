@@ -1,137 +1,18 @@
 #!/bin/bash
+set -eo pipefail
 
-#=================================================
-# IMPORT GENERIC HELPERS
-#=================================================
+: "${YNH_APP_INSTANCE_NAME:?}"
+app="$YNH_APP_INSTANCE_NAME"
+export YNH_APP_INSTANCE_NAME="$app"
 
-SOURCE_DIR="$(cd -- "$(dirname "$0")" && pwd)"
-source "$SOURCE_DIR/_common.sh"
-source /usr/share/yunohost/helpers
+: "${YNH_APP_INSTALL_BASEDIR:=/var/www}"
+: "${YNH_APP_INSTALL_DIR:=${YNH_APP_INSTALL_BASEDIR%/}/$app}"
+export YNH_APP_INSTALL_BASEDIR
+export YNH_APP_INSTALL_DIR
 
-# Exit on command errors
-ynh_abort_if_errors
+: "${YNH_APP_DATA_DIR:=/var/lib/$app}"
+export YNH_APP_DATA_DIR
 
-#=================================================
-# RETRIEVE ARGUMENTS
-#=================================================
-
-domain=$YNH_APP_ARG_DOMAIN
-path_url=$YNH_APP_ARG_PATH
-app=$YNH_APP_INSTANCE_NAME
-
-# Force the correct install directory path
-install_dir="/var/www/$app"
-data_dir="/var/lib/$app"
-
-#=================================================
-# CHECK ARGUMENTS
-#=================================================
-
-ynh_script_progression "Validating installation parameters..."
-
-#=================================================
-# FIX: MOVE FILES FROM SUBDIRECTORY (The "Empty Folder" Fix)
-#=================================================
-
-# Sometimes extracting the zip puts files in a subfolder (e.g. myddleware-4.2.2)
-# We check if index.php is missing in the root, but exists in a subfolder.
-if [[ ! -f "$install_dir/index.php" ]]; then
-    # Find the first subfolder
-    subfolder=$(find "$install_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-    
-    if [[ -n "$subfolder" ]]; then
-        ynh_script_progression "Moving files from subfolder $(basename "$subfolder")..."
-        # Move files up one level
-        mv "$subfolder"/* "$install_dir/" 2>/dev/null
-        mv "$subfolder"/.* "$install_dir/" 2>/dev/null
-        # Remove the empty subfolder
-        rmdir "$subfolder"
-    fi
-fi
-
-#=================================================
-# SETUP DATABASE (The "Error 1007" Fix)
-#=================================================
-ynh_script_progression "Setting up database..."
-db_name=$(ynh_sanitize_dbid --db_name=$app)
-db_user=$(ynh_sanitize_dbid --db_name=$app)
-db_pwd=$(ynh_string_random 20)
-
-# Drop existing DB if retrying installation (Cleanup zombie databases)
-ynh_mysql_execute_as_root --sql="DROP DATABASE IF EXISTS $db_name; DROP USER IF EXISTS '$db_user'@'localhost';"
-
-# Create the database fresh
-ynh_mysql_setup_db --db_user=$db_user --db_name=$db_name --db_pwd=$db_pwd
-
-#=================================================
-# STORE SETTINGS
-#=================================================
-
-ynh_app_setting_set --app="$app" --key=domain --value="$domain"
-ynh_app_setting_set --app="$app" --key=path --value="$path_url"
-ynh_app_setting_set --app="$app" --key=phpversion --value="$YNH_PHP_VERSION"
-ynh_app_setting_set --app="$app" --key=install_dir --value="$install_dir"
-ynh_app_setting_set --app="$app" --key=data_dir --value="$data_dir"
-ynh_app_setting_set --app="$app" --key=db_name --value="$db_name"
-ynh_app_setting_set --app="$app" --key=db_user --value="$db_user"
-ynh_app_setting_set --app="$app" --key=db_pwd --value="$db_pwd"
-
-#=================================================
-# INSTALL DEPENDENCIES
-#=================================================
-
-ynh_script_progression "Installing required dependencies..."
-ynh_exec_warn_less ynh_install_app_dependencies "${pkg_dependencies[@]}"
-
-#=================================================
-# FINALIZE PERMISSIONS
-#=================================================
-
-# Ensure ownership is correct after moving files
-chown -R "$app":www-data "$install_dir"
-chmod -R 750 "$install_dir"
-
-#=================================================
-# PHP-FPM CONFIGURATION (The "File Not Found" Fix)
-#=================================================
-
-ynh_script_progression "Configuring PHP-FPM pool..."
-fpm_template=/etc/php/$YNH_PHP_VERSION/fpm/pool.d/$app.conf
-
-# 1. Copy the file first
-cp ../conf/php-fpm.conf "$fpm_template"
-
-# 2. Modify in-place
-ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$fpm_template"
-ynh_replace_string --match_string="__USER__" --replace_string="$app" --target_file="$fpm_template"
-ynh_replace_string --match_string="__INSTALL_DIR__" --replace_string="$install_dir" --target_file="$fpm_template"
-ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" --target_file="$fpm_template"
-
-#=================================================
-# NGINX CONFIGURATION
-#=================================================
-
-ynh_script_progression "Configuring NGINX..."
-nginx_conf_path=/etc/nginx/conf.d/$domain.d/$app.conf
-
-# 1. Copy the file first
-cp ../conf/nginx.conf "$nginx_conf_path"
-
-# 2. Modify in-place
-ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file="$nginx_conf_path"
-ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" --target_file="$nginx_conf_path"
-ynh_replace_string --match_string="__FINALPATH__" --replace_string="$install_dir" --target_file="$nginx_conf_path"
-ynh_replace_string --match_string="__PHP_VERSION__" --replace_string="$YNH_PHP_VERSION" --target_file="$nginx_conf_path"
-ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$nginx_conf_path"
-
-#=================================================
-# RELOAD SERVICES (The "Invalid Argument" Fix)
-#=================================================
-
-ynh_script_progression "Reloading services..."
-
-# Use standard systemctl commands
-systemctl reload "php$YNH_PHP_VERSION-fpm"
-systemctl reload nginx
-
-ynh_script_progression "Installation of $app completed"
+set -u
+SCRIPT_DIR="$(cd -- "$(dirname "$0")" && pwd)"
+exec "$SCRIPT_DIR/scripts/install" "$@"

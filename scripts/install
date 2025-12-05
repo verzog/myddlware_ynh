@@ -30,6 +30,23 @@ data_dir="/var/lib/$app"
 ynh_script_progression "Validating installation parameters..."
 
 #=================================================
+# FIX: MOVE FILES FROM SUBDIRECTORY (The "Empty Folder" Fix)
+#=================================================
+
+# Sometimes extracting the zip puts files in a subfolder (e.g. myddleware-4.2.2).
+# If the main entry point is missing in the root but present in a child folder, move the files up.
+if [[ -d "$install_dir" && ! -f "$install_dir/index.php" ]]; then
+    subfolder=$(find "$install_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)
+
+    if [[ -n "$subfolder" ]]; then
+        ynh_script_progression "Moving files from subfolder $(basename "$subfolder")..."
+        mv "$subfolder"/* "$install_dir/" 2>/dev/null
+        mv "$subfolder"/.* "$install_dir/" 2>/dev/null
+        rmdir "$subfolder"
+    fi
+fi
+
+#=================================================
 # SETUP DATABASE
 #=================================================
 ynh_script_progression "Setting up database..."
