@@ -3,7 +3,7 @@
 Myddleware is an open-source middleware platform that synchronizes and transforms data between business applications. This package brings Myddleware to YunoHost with a dedicated PHP-FPM pool, NGINX configuration, and Composer-managed dependencies.
 
 ## Features
-- Composer-based installation of the official Myddleware release
+- Composer-based installation of the official Myddleware release (v4.2.2)
 - Dedicated PHP-FPM pool and NGINX vhost modeled after the Kimai2 YunoHost package
 - Automatic database provisioning (MariaDB/MySQL)
 - Production-ready `.env.local` generation with secure secrets
