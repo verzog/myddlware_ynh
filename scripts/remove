@@ -1,17 +1,11 @@
 #!/bin/bash
 set -eu
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source /usr/share/yunohost/helpers
+source "$SCRIPT_DIR/_common.sh"
 
 ynh_abort_if_errors
-
-app=$YNH_APP_INSTANCE_NAME
-final_path=$(ynh_app_setting_get --app="$app" --key=final_path)
-domain=$(ynh_app_setting_get --app="$app" --key=domain)
-phpversion=$(ynh_app_setting_get --app="$app" --key=phpversion)
-db_name=$(ynh_app_setting_get --app="$app" --key=db_name)
-db_user=$(ynh_app_setting_get --app="$app" --key=db_user)
-db_pwd=$(ynh_app_setting_get --app="$app" --key=db_pwd)
 
 ynh_script_progression --message="Removing NGINX configuration" --time --weight=1
 ynh_secure_remove --file="/etc/nginx/conf.d/$domain.d/$app.conf"
