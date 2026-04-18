@@ -76,6 +76,14 @@ chown "$app:$app" "$final_path/.env.local"
 chmod 640 "$final_path/.env.local"
 
 #=================================================
+# DATABASE MIGRATIONS
+#=================================================
+ynh_script_progression --message="Running database migrations" --time --weight=1
+if [ -x "$final_path/bin/console" ]; then
+    sudo -u "$app" php$phpversion "$final_path/bin/console" doctrine:migrations:migrate --no-interaction || true
+fi
+
+#=================================================
 # PHP-FPM AND NGINX CONFIGURATION
 #=================================================
 ynh_script_progression --message="Configuring PHP-FPM" --time --weight=1
