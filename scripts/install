@@ -1,9 +1,9 @@
 #!/bin/bash
 set -eu
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+_app_dir="$(cd "$(dirname "$0")" && pwd)"
 source /usr/share/yunohost/helpers
-source "$SCRIPT_DIR/_common.sh"
+source "$_app_dir/_common.sh"
 
 ynh_abort_if_errors
 
@@ -83,11 +83,11 @@ fi
 # PHP-FPM AND NGINX CONFIGURATION
 #=================================================
 ynh_script_progression --message="Configuring PHP-FPM" --time --weight=1
-ynh_add_fpm_config --phpversion="$phpversion" --config="$SCRIPT_DIR/../conf/php-fpm.conf"
+ynh_add_fpm_config --phpversion="$phpversion" --config="$_app_dir/../conf/php-fpm.conf"
 
 ynh_script_progression --message="Configuring NGINX" --time --weight=1
 nginx_conf="/etc/nginx/conf.d/$domain.d/$app.conf"
-ynh_add_config --template="$SCRIPT_DIR/../conf/nginx.conf" --destination="$nginx_conf"
+ynh_add_config --template="$_app_dir/../conf/nginx.conf" --destination="$nginx_conf"
 ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file="$nginx_conf"
 ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" --target_file="$nginx_conf"
 ynh_replace_string --match_string="__FINALPATH__" --replace_string="$final_path" --target_file="$nginx_conf"
