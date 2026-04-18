@@ -8,16 +8,12 @@ source "$SCRIPT_DIR/_common.sh"
 ynh_abort_if_errors
 
 #=================================================
-# CHECKING ARGUMENTS
+# STORE SETTINGS
 #=================================================
-ynh_script_progression --message="Validating installation parameters" --time --weight=1
-ynh_webpath_available --domain="$domain" --path_url="$path_url" || ynh_die --message="The path $path_url on $domain is not available."
-ynh_webpath_register --domain="$domain" --path_url="$path_url" --app="$app"
-
+ynh_script_progression --message="Storing installation settings" --time --weight=1
 ynh_app_setting_set --app="$app" --key=domain --value="$domain"
 ynh_app_setting_set --app="$app" --key=path --value="$path_url"
 ynh_app_setting_set --app="$app" --key=admin --value="$admin_mail"
-ynh_app_setting_set --app="$app" --key=is_public --value="$is_public"
 ynh_app_setting_set --app="$app" --key=final_path --value="$final_path"
 ynh_app_setting_set --app="$app" --key=phpversion --value="$phpversion"
 
@@ -97,15 +93,6 @@ ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" --targ
 ynh_replace_string --match_string="__FINALPATH__" --replace_string="$final_path" --target_file="$nginx_conf"
 ynh_replace_string --match_string="__PHPVERSION__" --replace_string="$phpversion" --target_file="$nginx_conf"
 ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$nginx_conf"
-
-#=================================================
-# PERMISSIONS
-#=================================================
-ynh_script_progression --message="Applying permissions" --time --weight=1
-ynh_permission_url --permission=main --url="/"
-if [ "$is_public" != "1" ] && [ "$is_public" != "true" ]; then
-    ynh_permission_update --permission=main --remove=visitors
-fi
 
 #=================================================
 # SERVICE RELOAD

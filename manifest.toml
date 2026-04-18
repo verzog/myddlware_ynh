@@ -24,55 +24,41 @@ yunohost = ">= 11.2"
 architectures = ["amd64", "armhf", "arm64"]
 multi_instance = true
 ldap = "not_relevant"
-sso = "false"
-dns = "automatic"
+sso = false
+disk = "1200M"
 ram.build = "256M"
 ram.runtime = "512M"
-disk = "1200M"
 
-[requirements]
-yunohost = ">= 11.2"
-php = ">= 8.2"
-mysql = true
-composer = true
+[install]
 
-[arguments]
+  [install.domain]
+  type = "domain"
 
-  [arguments.install]
+  [install.path]
+  type = "path"
+  default = "/myddlware"
 
-    [arguments.install.domain]
-    type = "domain"
-    ask = "Select the domain where Myddleware will be installed"
+  [install.init_main_permission]
+  type = "group"
+  default = "visitors"
 
-    [arguments.install.path]
-    type = "path"
-    ask = "Select the path where Myddleware will be installed"
-    default = "/myddlware"
-
-    [arguments.install.admin]
-    type = "string"
-    ask = "Administrator email for Myddleware"
-
-    [arguments.install.is_public]
-    type = "boolean"
-    ask = "Should Myddleware be accessible to the public?"
-    default = true
+  [install.admin]
+  ask.en = "Administrator email for Myddleware"
+  type = "string"
 
 [resources]
 
   [resources.sources]
 
     [resources.sources.main]
-url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.3.0.zip"
-sha256 = "4afd593c32b4b706082450c6e7120d8e3cbb2346e907b738ebea743173b715ea"
-
+    url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.3.0.zip"
+    sha256 = "4afd593c32b4b706082450c6e7120d8e3cbb2346e907b738ebea743173b715ea"
 
   [resources.system_user]
-  # Created during install
 
   [resources.install_dir]
   path = "/var/www/myddlware"
 
   [resources.permissions]
     [resources.permissions.main]
-    allowed = "visitors"
+    url = "/"
