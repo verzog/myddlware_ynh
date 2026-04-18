@@ -75,5 +75,4 @@ sha256 = "4afd593c32b4b706082450c6e7120d8e3cbb2346e907b738ebea743173b715ea"
 
   [resources.permissions]
     [resources.permissions.main]
-    url = "/"
     allowed = "visitors"
