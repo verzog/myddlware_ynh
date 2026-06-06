@@ -38,6 +38,9 @@ db_user=$(ynh_app_setting_get --app="$app" --key=db_user)
 db_pwd=$(ynh_app_setting_get --app="$app" --key=db_pwd)
 
 secret=$(ynh_string_random --length=64)
+jwt_passphrase=$(ynh_string_random --length=48)
+ynh_app_setting_set --app="$app" --key=jwt_passphrase --value="$jwt_passphrase"
+
 cat > "$install_dir/.env.local" <<ENV
 APP_ENV=prod
 APP_SECRET=$secret
@@ -47,12 +50,27 @@ DATABASE_NAME=$db_name
 DATABASE_USER=$db_user
 DATABASE_PASSWORD=$db_pwd
 MAILER_URL=null://localhost
+JWT_SECRET_KEY=%kernel.project_dir%/config/jwt/private.pem
+JWT_PUBLIC_KEY=%kernel.project_dir%/config/jwt/public.pem
+JWT_PASSPHRASE=$jwt_passphrase
 ENV
-chown -R "$app:$app" "$install_dir"
 chmod 640 "$install_dir/.env.local"
 
 #=================================================
-# DATABASE MIGRATIONS
+# JWT KEY PAIR
+#=================================================
+ynh_script_progression --message="Generating JWT key pair"
+mkdir -p "$install_dir/config/jwt"
+openssl genpkey -algorithm RSA -out "$install_dir/config/jwt/private.pem" \
+    -aes256 -pass "pass:$jwt_passphrase" -pkeyopt rsa_keygen_bits:4096
+openssl pkey -in "$install_dir/config/jwt/private.pem" \
+    -passin "pass:$jwt_passphrase" -pubout -out "$install_dir/config/jwt/public.pem"
+chmod 640 "$install_dir/config/jwt/private.pem" "$install_dir/config/jwt/public.pem"
+
+chown -R "$app:$app" "$install_dir"
+
+#=================================================
+# DATABASE SCHEMA
 #=================================================
 ynh_script_progression --message="Creating database schema" --weight=5
 if [ -x "$install_dir/bin/console" ]; then
@@ -66,6 +84,33 @@ if [ -x "$install_dir/bin/console" ]; then
         php$phpversion "$install_dir/bin/console" \
         doctrine:schema:create --no-interaction
 fi
+
+#=================================================
+# CACHE WARMUP
+#=================================================
+ynh_script_progression --message="Warming Symfony cache" --weight=3
+sudo -u "$app" env \
+    APP_ENV=prod \
+    APP_SECRET="$secret" \
+    DATABASE_HOST=127.0.0.1 \
+    DATABASE_PORT=3306 \
+    DATABASE_NAME="$db_name" \
+    DATABASE_USER="$db_user" \
+    DATABASE_PASSWORD="$db_pwd" \
+    JWT_PASSPHRASE="$jwt_passphrase" \
+    php$phpversion "$install_dir/bin/console" cache:clear --no-warmup
+sudo -u "$app" env \
+    APP_ENV=prod \
+    APP_SECRET="$secret" \
+    DATABASE_HOST=127.0.0.1 \
+    DATABASE_PORT=3306 \
+    DATABASE_NAME="$db_name" \
+    DATABASE_USER="$db_user" \
+    DATABASE_PASSWORD="$db_pwd" \
+    JWT_PASSPHRASE="$jwt_passphrase" \
+    php$phpversion "$install_dir/bin/console" cache:warmup
+
+chown -R "$app:$app" "$install_dir/var"
 
 #=================================================
 # PHP-FPM AND NGINX CONFIGURATION
