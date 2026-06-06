@@ -1,6 +1,6 @@
 packaging_format = 2
 
-id = "myddlware"
+id = "myddleware"
 name = "Myddleware"
 
 version = "4.3.0~ynh1"
@@ -36,7 +36,7 @@ ram.runtime = "512M"
 
   [install.path]
   type = "path"
-  default = "/myddlware"
+  default = "/myddleware"
 
   [install.init_main_permission]
   type = "group"
@@ -44,7 +44,8 @@ ram.runtime = "512M"
 
   [install.admin]
   ask.en = "Administrator email for Myddleware"
-  type = "string"
+  ask.fr = "Adresse email de l'administrateur Myddleware"
+  type = "email"
 
 [resources]
 
@@ -53,12 +54,30 @@ ram.runtime = "512M"
     [resources.sources.main]
     url = "https://github.com/Myddleware/myddleware/archive/refs/tags/v4.3.0.zip"
     sha256 = "4afd593c32b4b706082450c6e7120d8e3cbb2346e907b738ebea743173b715ea"
+    autoupdate.strategy = "latest_github_tag"
 
   [resources.system_user]
 
   [resources.install_dir]
-  path = "/var/www/myddlware"
 
   [resources.permissions]
     [resources.permissions.main]
     url = "/"
+
+  [resources.apt]
+  packages = [
+    "php8.2-fpm",
+    "php8.2-cli",
+    "php8.2-mysql",
+    "php8.2-xml",
+    "php8.2-mbstring",
+    "php8.2-curl",
+    "php8.2-zip",
+    "php8.2-intl",
+    "php8.2-gd",
+    "php8.2-bcmath",
+    "composer",
+  ]
+
+  [resources.database]
+  type = "mysql"
