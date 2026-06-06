@@ -53,11 +53,13 @@ ynh_use_nodejs
 # Yarn (classic) is not bundled with Node; (re)install it into the Node prefix.
 ynh_exec_warn_less npm install -g yarn
 
+# Run yarn with the process CWD and HOME inside the (app-owned) install dir to
+# avoid Yarn Classic's .yarnrc walk hitting root-only /var/cache/yunohost (EACCES).
 ynh_script_progression --message="Installing JS dependencies (yarn)" --weight=15
-sudo -u "$app" env PATH="$PATH" yarn --cwd "$install_dir" install --frozen-lockfile
+(cd "$install_dir" && sudo -u "$app" env PATH="$PATH" HOME="$install_dir" yarn install --frozen-lockfile)
 
 ynh_script_progression --message="Building frontend assets (yarn build)" --weight=15
-sudo -u "$app" env PATH="$PATH" yarn --cwd "$install_dir" build
+(cd "$install_dir" && sudo -u "$app" env PATH="$PATH" HOME="$install_dir" yarn build)
 
 # Fail loudly if the build silently produced nothing.
 if [ ! -f "$install_dir/public/build/entrypoints.json" ]; then

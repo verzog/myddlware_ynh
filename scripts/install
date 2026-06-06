@@ -38,11 +38,15 @@ ynh_use_nodejs
 # (as root, since the n-managed prefix is root-owned) so it lands on PATH.
 ynh_exec_warn_less npm install -g yarn
 
+# Run yarn with the process CWD and HOME inside the (app-owned) install dir.
+# Yarn Classic walks up from the CWD reading .yarnrc files; if the CWD is under
+# /var/cache/yunohost (root-only, mode 700) the app user hits EACCES, so we must
+# cd into the install dir and pin HOME there rather than rely only on --cwd.
 ynh_script_progression --message="Installing JS dependencies (yarn)" --weight=15
-sudo -u "$app" env PATH="$PATH" yarn --cwd "$install_dir" install --frozen-lockfile
+(cd "$install_dir" && sudo -u "$app" env PATH="$PATH" HOME="$install_dir" yarn install --frozen-lockfile)
 
 ynh_script_progression --message="Building frontend assets (yarn build)" --weight=15
-sudo -u "$app" env PATH="$PATH" yarn --cwd "$install_dir" build
+(cd "$install_dir" && sudo -u "$app" env PATH="$PATH" HOME="$install_dir" yarn build)
 
 # Fail loudly if the build silently produced nothing (today's nastiest failure mode).
 if [ ! -f "$install_dir/public/build/entrypoints.json" ]; then
