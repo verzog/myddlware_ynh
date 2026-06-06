@@ -131,9 +131,13 @@ run_console fos:js-routing:dump --format=json --target=public/js/fos_js_routes.j
 # CREATE ADMIN USER
 #=================================================
 ynh_script_progression --message="Creating administrator account"
+# YunoHost collects an email; derive a login username from its local part.
+# myddleware:add-user signature is: <username> <password> <email> [--superadmin]
+admin_username="${admin%%@*}"
 admin_password=$(ynh_string_random --length=24)
+ynh_app_setting_set --app="$app" --key=admin_username --value="$admin_username"
 ynh_app_setting_set --app="$app" --key=admin_password --value="$admin_password"
-run_console myddleware:add-user "$admin" "$admin_password" --superadmin -n
+run_console myddleware:add-user "$admin_username" "$admin_password" "$admin" --superadmin -n
 
 chown -R "$app:$app" "$install_dir/var" "$install_dir/public"
 
