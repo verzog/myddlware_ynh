@@ -37,15 +37,15 @@ db_name=$(ynh_app_setting_get --app="$app" --key=db_name)
 db_user=$(ynh_app_setting_get --app="$app" --key=db_user)
 db_pwd=$(ynh_app_setting_get --app="$app" --key=db_pwd)
 
-# URL-encode the password in case it contains characters reserved in URLs
-db_pwd_enc=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$db_pwd")
-database_url="mysql://${db_user}:${db_pwd_enc}@127.0.0.1:3306/${db_name}"
-
 secret=$(ynh_string_random --length=64)
 cat > "$install_dir/.env.local" <<ENV
 APP_ENV=prod
 APP_SECRET=$secret
-DATABASE_URL="$database_url"
+DATABASE_HOST=127.0.0.1
+DATABASE_PORT=3306
+DATABASE_NAME=$db_name
+DATABASE_USER=$db_user
+DATABASE_PASSWORD=$db_pwd
 MAILER_URL=null://localhost
 ENV
 chown -R "$app:$app" "$install_dir"
@@ -58,7 +58,11 @@ ynh_script_progression --message="Running database migrations" --weight=5
 if [ -x "$install_dir/bin/console" ]; then
     sudo -u "$app" env \
         APP_ENV=prod \
-        DATABASE_URL="$database_url" \
+        DATABASE_HOST=127.0.0.1 \
+        DATABASE_PORT=3306 \
+        DATABASE_NAME="$db_name" \
+        DATABASE_USER="$db_user" \
+        DATABASE_PASSWORD="$db_pwd" \
         php$phpversion "$install_dir/bin/console" \
         doctrine:migrations:migrate --no-interaction
 fi
