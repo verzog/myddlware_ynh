@@ -1,104 +1,69 @@
 #!/bin/bash
 set -eu
 
-_app_dir="$(cd "$(dirname "$0")" && pwd)"
 source /usr/share/yunohost/helpers
-source "$_app_dir/_common.sh"
-
-ynh_abort_if_errors
+source "$(dirname "$0")/_common.sh"
 
 #=================================================
-# STORE SETTINGS
+# STORE APP-SPECIFIC SETTINGS
 #=================================================
-ynh_script_progression --message="Storing installation settings" --time --weight=1
-ynh_app_setting_set --app="$app" --key=domain --value="$domain"
-ynh_app_setting_set --app="$app" --key=path --value="$path_url"
-ynh_app_setting_set --app="$app" --key=admin --value="$admin_mail"
-ynh_app_setting_set --app="$app" --key=final_path --value="$final_path"
+ynh_app_setting_set --app="$app" --key=admin --value="$admin"
 ynh_app_setting_set --app="$app" --key=phpversion --value="$phpversion"
 
-db_pwd=$(ynh_string_random --length=32)
-ynh_app_setting_set --app="$app" --key=db_name --value="$db_name"
-ynh_app_setting_set --app="$app" --key=db_user --value="$db_user"
-ynh_app_setting_set --app="$app" --key=db_pwd --value="$db_pwd"
+#=================================================
+# FETCH SOURCES
+#=================================================
+ynh_script_progression --message="Fetching Myddleware sources" --weight=2
+ynh_setup_source --dest_dir="$install_dir"
+chown -R "$app:$app" "$install_dir"
 
 #=================================================
-# SYSTEM USER AND DIRECTORIES
+# COMPOSER DEPENDENCIES
 #=================================================
-ynh_script_progression --message="Creating system user" --time --weight=1
-ynh_system_user_create --username="$app"
+ynh_script_progression --message="Installing Composer" --weight=2
+ynh_install_composer --phpversion="$phpversion" --workdir="$install_dir"
 
-ynh_script_progression --message="Preparing installation directory" --time --weight=1
-ynh_secure_remove --file="$final_path"
-mkdir -p "$final_path"
-chown -R "$app:$app" "$final_path"
-
-#=================================================
-# FETCH AND PREPARE SOURCES
-#=================================================
-ynh_script_progression --message="Fetching Myddleware sources" --time --weight=1
-ynh_setup_source --dest_dir="$final_path"
-
-#=================================================
-# INSTALL COMPOSER DEPENDENCIES
-#=================================================
-ynh_script_progression --message="Installing Composer" --time --weight=1
-ynh_install_composer --phpversion="$phpversion" --workdir="$final_path"
-
-ynh_script_progression --message="Installing PHP dependencies" --time --weight=1
-ynh_composer_exec --phpversion="$phpversion" --workdir="$final_path" --commands="install --no-dev --optimize-autoloader"
-
-#=================================================
-# DATABASE
-#=================================================
-ynh_script_progression --message="Creating MariaDB database" --time --weight=1
-ynh_mysql_db_create --db_user="$db_user" --db_name="$db_name" --db_pwd="$db_pwd"
+ynh_script_progression --message="Installing PHP dependencies" --weight=10
+ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
+    --commands="install --no-dev --optimize-autoloader"
 
 #=================================================
 # APPLICATION CONFIGURATION
 #=================================================
-ynh_script_progression --message="Generating application configuration" --time --weight=1
-mkdir -p "$final_path/var/cache" "$final_path/var/log"
-chown -R "$app:$app" "$final_path/var"
+ynh_script_progression --message="Generating application configuration"
+mkdir -p "$install_dir/var/cache" "$install_dir/var/log"
 
-secret=$(openssl rand -hex 32)
-cat > "$final_path/.env.local" <<ENV
+secret=$(ynh_string_random --length=64)
+cat > "$install_dir/.env.local" <<ENV
 APP_ENV=prod
 APP_SECRET=$secret
 DATABASE_URL="mysql://$db_user:$db_pwd@localhost:3306/$db_name"
 MAILER_URL=null://localhost
 ENV
-chown "$app:$app" "$final_path/.env.local"
-chmod 640 "$final_path/.env.local"
+chown -R "$app:$app" "$install_dir"
+chmod 640 "$install_dir/.env.local"
 
 #=================================================
 # DATABASE MIGRATIONS
 #=================================================
-ynh_script_progression --message="Running database migrations" --time --weight=1
-if [ -x "$final_path/bin/console" ]; then
-    sudo -u "$app" php$phpversion "$final_path/bin/console" doctrine:migrations:migrate --no-interaction || true
+ynh_script_progression --message="Running database migrations" --weight=5
+if [ -x "$install_dir/bin/console" ]; then
+    sudo -u "$app" php$phpversion "$install_dir/bin/console" \
+        doctrine:migrations:migrate --no-interaction
 fi
 
 #=================================================
 # PHP-FPM AND NGINX CONFIGURATION
 #=================================================
-ynh_script_progression --message="Configuring PHP-FPM" --time --weight=1
-ynh_add_fpm_config --phpversion="$phpversion" --config="$_app_dir/../conf/php-fpm.conf"
+ynh_script_progression --message="Configuring PHP-FPM"
+ynh_add_fpm_config --phpversion="$phpversion"
 
-ynh_script_progression --message="Configuring NGINX" --time --weight=1
-nginx_conf="/etc/nginx/conf.d/$domain.d/$app.conf"
-ynh_add_config --template="$_app_dir/../conf/nginx.conf" --destination="$nginx_conf"
-ynh_replace_string --match_string="__DOMAIN__" --replace_string="$domain" --target_file="$nginx_conf"
-ynh_replace_string --match_string="__PATH__" --replace_string="$path_url" --target_file="$nginx_conf"
-ynh_replace_string --match_string="__FINALPATH__" --replace_string="$final_path" --target_file="$nginx_conf"
-ynh_replace_string --match_string="__PHPVERSION__" --replace_string="$phpversion" --target_file="$nginx_conf"
-ynh_replace_string --match_string="__APP__" --replace_string="$app" --target_file="$nginx_conf"
+ynh_script_progression --message="Configuring NGINX"
+ynh_add_nginx_config
 
 #=================================================
-# SERVICE RELOAD
+# RELOAD SERVICES
 #=================================================
-ynh_script_progression --message="Reloading services" --time --weight=1
-ynh_systemd_action --service_name="php${phpversion}-fpm" --action="reload" --log_path="/var/log/php${phpversion}-fpm/$app.log" || true
-ynh_systemd_action --service_name="nginx" --action="reload" || true
-
-ynh_script_success
+ynh_script_progression --message="Reloading services"
+ynh_systemd_action --service_name="php${phpversion}-fpm" --action=reload
+ynh_systemd_action --service_name=nginx --action=reload

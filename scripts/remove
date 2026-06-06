@@ -1,29 +1,11 @@
 #!/bin/bash
 set -eu
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source /usr/share/yunohost/helpers
-source "$SCRIPT_DIR/_common.sh"
+source "$(dirname "$0")/_common.sh"
 
-ynh_abort_if_errors
+ynh_script_progression --message="Removing NGINX configuration"
+ynh_remove_nginx_config
 
-ynh_script_progression --message="Removing NGINX configuration" --time --weight=1
-ynh_secure_remove --file="/etc/nginx/conf.d/$domain.d/$app.conf"
-
-ynh_script_progression --message="Removing PHP-FPM pool" --time --weight=1
-ynh_secure_remove --file="/etc/php/$phpversion/fpm/pool.d/$app.conf"
-
-ynh_script_progression --message="Dropping database" --time --weight=1
-ynh_mysql_remove_db --db_user="$db_user" --db_name="$db_name"
-
-ynh_script_progression --message="Removing application files" --time --weight=1
-ynh_secure_remove --file="$final_path"
-
-ynh_script_progression --message="Deleting system user" --time --weight=1
-ynh_system_user_delete --username="$app"
-
-ynh_script_progression --message="Reloading services" --time --weight=1
-ynh_systemd_action --service_name="php${phpversion}-fpm" --action="reload" --log_path="/var/log/php${phpversion}-fpm/$app.log" || true
-ynh_systemd_action --service_name="nginx" --action="reload" || true
-
-ynh_script_success
+ynh_script_progression --message="Removing PHP-FPM pool"
+ynh_remove_fpm_config

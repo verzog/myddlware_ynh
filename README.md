@@ -3,7 +3,7 @@
 Myddleware is an open-source middleware platform that synchronizes and transforms data between business applications. This package brings Myddleware to YunoHost with a dedicated PHP-FPM pool, NGINX configuration, and Composer-managed dependencies.
 
 ## Features
-- Composer-based installation of the official Myddleware release (v4.2.2)
+- Composer-based installation of the official Myddleware release (v4.3.0)
 - Dedicated PHP-FPM pool and NGINX vhost modeled after the Kimai2 YunoHost package
 - Automatic database provisioning (MariaDB/MySQL)
 - Production-ready `.env.local` generation with secure secrets
@@ -25,9 +25,9 @@ The upgrade script backs up existing files, fetches the latest upstream release,
 - **Restore**: The `restore` script recreates the system user, restores files, reconfigures NGINX/PHP-FPM, and imports the database dump.
 
 ## Debugging
-- View logs in `/var/log/nginx/myddlware-access.log`, `/var/log/nginx/myddlware-error.log`, and PHP-FPM logs in `/var/log/php8.2-fpm/myddlware.log`.
+- View logs in `/var/log/nginx/myddleware-access.log`, `/var/log/nginx/myddleware-error.log`, and PHP-FPM logs in `/var/log/php8.2-fpm/myddleware.log`.
 - Regenerate configuration after edits with `yunohost app ssowatconf regen` and `yunohost service regen-conf nginx --force`.
-- Run Composer commands from `/var/www/myddlware` using `sudo -u myddlware` for correct permissions.
+- Run Composer commands from `/var/www/myddleware` using `sudo -u myddleware` for correct permissions.
 
 ## Documentation
 - Project documentation and usage guides: <https://github.com/Myddleware/myddleware/wiki>
