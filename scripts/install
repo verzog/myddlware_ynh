@@ -33,6 +33,10 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
 ynh_script_progression --message="Generating application configuration"
 mkdir -p "$install_dir/var/cache" "$install_dir/var/log"
 
+db_name=$(ynh_app_setting_get --app="$app" --key=db_name)
+db_user=$(ynh_app_setting_get --app="$app" --key=db_user)
+db_pwd=$(ynh_app_setting_get --app="$app" --key=db_pwd)
+
 secret=$(ynh_string_random --length=64)
 cat > "$install_dir/.env.local" <<ENV
 APP_ENV=prod
