@@ -54,7 +54,7 @@ chmod 640 "$install_dir/.env.local"
 #=================================================
 # DATABASE MIGRATIONS
 #=================================================
-ynh_script_progression --message="Running database migrations" --weight=5
+ynh_script_progression --message="Creating database schema" --weight=5
 if [ -x "$install_dir/bin/console" ]; then
     sudo -u "$app" env \
         APP_ENV=prod \
@@ -64,7 +64,7 @@ if [ -x "$install_dir/bin/console" ]; then
         DATABASE_USER="$db_user" \
         DATABASE_PASSWORD="$db_pwd" \
         php$phpversion "$install_dir/bin/console" \
-        doctrine:migrations:migrate --no-interaction
+        doctrine:schema:create --no-interaction
 fi
 
 #=================================================
