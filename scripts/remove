@@ -9,3 +9,6 @@ ynh_remove_nginx_config
 
 ynh_script_progression --message="Removing PHP-FPM pool"
 ynh_remove_fpm_config
+
+ynh_script_progression --message="Removing Node.js"
+ynh_remove_nodejs

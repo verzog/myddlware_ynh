@@ -28,6 +28,28 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
     --commands="install --optimize-autoloader"
 
 #=================================================
+# NODE.JS + FRONTEND ASSETS
+#=================================================
+ynh_script_progression --message="Installing Node.js" --weight=10
+ynh_install_nodejs --nodejs_version="$nodejs_version"
+ynh_use_nodejs
+
+# Yarn (classic) is not bundled with Node; install it into the Node prefix
+# (as root, since the n-managed prefix is root-owned) so it lands on PATH.
+ynh_exec_warn_less npm install -g yarn
+
+ynh_script_progression --message="Installing JS dependencies (yarn)" --weight=15
+sudo -u "$app" env PATH="$PATH" yarn --cwd "$install_dir" install --frozen-lockfile
+
+ynh_script_progression --message="Building frontend assets (yarn build)" --weight=15
+sudo -u "$app" env PATH="$PATH" yarn --cwd "$install_dir" build
+
+# Fail loudly if the build silently produced nothing (today's nastiest failure mode).
+if [ ! -f "$install_dir/public/build/entrypoints.json" ]; then
+    ynh_die --message="Asset build failed: public/build/entrypoints.json was not generated"
+fi
+
+#=================================================
 # APPLICATION CONFIGURATION
 #=================================================
 ynh_script_progression --message="Generating application configuration"
@@ -69,48 +91,51 @@ chmod 640 "$install_dir/config/jwt/private.pem" "$install_dir/config/jwt/public.
 
 chown -R "$app:$app" "$install_dir"
 
-#=================================================
-# DATABASE SCHEMA
-#=================================================
-ynh_script_progression --message="Creating database schema" --weight=5
-if [ -x "$install_dir/bin/console" ]; then
+# Run a Symfony console command as the app user with the full runtime env.
+run_console() {
     sudo -u "$app" env \
         APP_ENV=prod \
+        APP_SECRET="$secret" \
         DATABASE_HOST=127.0.0.1 \
         DATABASE_PORT=3306 \
         DATABASE_NAME="$db_name" \
         DATABASE_USER="$db_user" \
         DATABASE_PASSWORD="$db_pwd" \
-        php$phpversion "$install_dir/bin/console" \
-        doctrine:schema:create --no-interaction
+        JWT_PASSPHRASE="$jwt_passphrase" \
+        php$phpversion "$install_dir/bin/console" "$@"
+}
+
+#=================================================
+# DATABASE SCHEMA
+#=================================================
+ynh_script_progression --message="Creating database schema" --weight=5
+if [ -x "$install_dir/bin/console" ]; then
+    run_console doctrine:schema:create --no-interaction
 fi
 
 #=================================================
 # CACHE WARMUP
 #=================================================
 ynh_script_progression --message="Warming Symfony cache" --weight=3
-sudo -u "$app" env \
-    APP_ENV=prod \
-    APP_SECRET="$secret" \
-    DATABASE_HOST=127.0.0.1 \
-    DATABASE_PORT=3306 \
-    DATABASE_NAME="$db_name" \
-    DATABASE_USER="$db_user" \
-    DATABASE_PASSWORD="$db_pwd" \
-    JWT_PASSPHRASE="$jwt_passphrase" \
-    php$phpversion "$install_dir/bin/console" cache:clear --no-warmup
-sudo -u "$app" env \
-    APP_ENV=prod \
-    APP_SECRET="$secret" \
-    DATABASE_HOST=127.0.0.1 \
-    DATABASE_PORT=3306 \
-    DATABASE_NAME="$db_name" \
-    DATABASE_USER="$db_user" \
-    DATABASE_PASSWORD="$db_pwd" \
-    JWT_PASSPHRASE="$jwt_passphrase" \
-    php$phpversion "$install_dir/bin/console" cache:warmup
+run_console cache:clear --no-warmup
+run_console cache:warmup
 
-chown -R "$app:$app" "$install_dir/var"
+#=================================================
+# DUMP JS ROUTES
+#=================================================
+ynh_script_progression --message="Dumping JS routes"
+mkdir -p "$install_dir/public/js"
+run_console fos:js-routing:dump --format=json --target=public/js/fos_js_routes.json
+
+#=================================================
+# CREATE ADMIN USER
+#=================================================
+ynh_script_progression --message="Creating administrator account"
+admin_password=$(ynh_string_random --length=24)
+ynh_app_setting_set --app="$app" --key=admin_password --value="$admin_password"
+run_console myddleware:add-user "$admin" "$admin_password" --superadmin -n
+
+chown -R "$app:$app" "$install_dir/var" "$install_dir/public"
 
 #=================================================
 # PHP-FPM AND NGINX CONFIGURATION
