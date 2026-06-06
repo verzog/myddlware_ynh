@@ -25,7 +25,7 @@ ynh_install_composer --phpversion="$phpversion" --workdir="$install_dir" --compo
 
 ynh_script_progression --message="Installing PHP dependencies" --weight=10
 ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
-    --commands="install --no-dev --optimize-autoloader"
+    --commands="install --optimize-autoloader"
 
 #=================================================
 # APPLICATION CONFIGURATION
