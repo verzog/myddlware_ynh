@@ -164,6 +164,17 @@ if [ -x "$install_dir/bin/console" ]; then
 fi
 
 #=================================================
+# LOAD INITIAL DATA
+#=================================================
+# Seed the foundational data (available solutions/connectors, config, cron jobs,
+# functions). Without this the "solution" dropdown is empty and no connector or
+# rule can be created. Fixtures are idempotent; --append avoids purging.
+ynh_script_progression --message="Loading initial data" --weight=3
+if [ -x "$install_dir/bin/console" ]; then
+    run_console doctrine:fixtures:load --no-interaction --append
+fi
+
+#=================================================
 # CACHE WARMUP
 #=================================================
 ynh_script_progression --message="Warming Symfony cache" --weight=3
