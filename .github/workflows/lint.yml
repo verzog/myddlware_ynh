@@ -36,8 +36,6 @@ jobs:
   package-linter:
     name: YunoHost package linter
     runs-on: ubuntu-latest
-    # Informational: surfaces packaging/style issues without blocking merges.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,10 +48,14 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.12"
 
       - name: Install linter dependencies
-        run: pip install toml jsonschema
+        run: |
+          pip install -r package_linter/requirements.txt || true
+          pip install toml jsonschema packaging
 
       - name: Run package_linter
+        # Informational: surfaces packaging/style notes without blocking merges.
+        continue-on-error: true
         run: python3 package_linter/package_linter.py ./app
