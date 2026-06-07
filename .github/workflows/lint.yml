@@ -1,0 +1,61 @@
+name: Lint
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    name: Shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bash syntax check
+        run: |
+          for f in scripts/*; do
+            [ -f "$f" ] || continue
+            echo "bash -n $f"
+            bash -n "$f"
+          done
+
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: ./scripts
+          severity: error
+        env:
+          # YNH helpers are sourced at runtime and define most variables, so
+          # silence "can't follow source" and "referenced but not assigned".
+          SHELLCHECK_OPTS: -e SC1090 -e SC1091 -e SC2034 -e SC2154
+
+  package-linter:
+    name: YunoHost package linter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+
+      - uses: actions/checkout@v4
+        with:
+          repository: YunoHost/package_linter
+          path: package_linter
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linter dependencies
+        run: |
+          pip install -r package_linter/requirements.txt || true
+          pip install toml jsonschema packaging
+
+      - name: Run package_linter
+        # Informational: surfaces packaging/style notes without blocking merges.
+        continue-on-error: true
+        run: python3 package_linter/package_linter.py ./app
