@@ -40,7 +40,7 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
 # workflow and rule-group pages). Re-add the imports to the global 'app' entry
 # (loaded on every page) so jQuery UI extends the single bundled jQuery
 # synchronously, before any ready handler — no CDN needed.
-ynh_script_progression --message="Patching frontend assets (jQuery UI)"
+ynh_script_progression --message="Patching frontend assets"
 if ! grep -q "ynh: bundle jQuery UI" "$install_dir/assets/app.js"; then
     cat >> "$install_dir/assets/app.js" <<'JS'
 
@@ -55,6 +55,13 @@ require('jquery-ui/ui/widgets/tabs');
 require('jquery-ui/ui/widgets/accordion');
 JS
 fi
+
+# Build with an absolute publicPath matching the install path. The default
+# relative './build' resolves against the current URL, so asset/image URLs
+# 404 on deep routes (e.g. /rule/view/123 -> /rule/view/build/...). Use
+# "/build" at the domain root, or "<path>/build" on a subpath install.
+public_path="${path%/}/build"
+sed -i "s#setPublicPath('./build')#setPublicPath('$public_path')#" "$install_dir/webpack.config.js"
 
 #=================================================
 # NODE.JS + FRONTEND ASSETS

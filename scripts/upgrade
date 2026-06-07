@@ -51,7 +51,7 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
 # Re-add jQuery UI to the global 'app' entry so $.fn.draggable etc. are bundled
 # synchronously instead of via per-page CDN tags that load too late (see install
 # script for the full rationale).
-ynh_script_progression --message="Patching frontend assets (jQuery UI)"
+ynh_script_progression --message="Patching frontend assets"
 if ! grep -q "ynh: bundle jQuery UI" "$install_dir/assets/app.js"; then
     cat >> "$install_dir/assets/app.js" <<'JS'
 
@@ -66,6 +66,11 @@ require('jquery-ui/ui/widgets/tabs');
 require('jquery-ui/ui/widgets/accordion');
 JS
 fi
+
+# Absolute publicPath matching the install path so asset/image URLs resolve on
+# deep routes (default relative './build' 404s there). See install for details.
+public_path="${path%/}/build"
+sed -i "s#setPublicPath('./build')#setPublicPath('$public_path')#" "$install_dir/webpack.config.js"
 
 #=================================================
 # NODE.JS + FRONTEND ASSETS
