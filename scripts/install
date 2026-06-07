@@ -70,6 +70,16 @@ fi
 public_path="${path%/}/build"
 sed -i "s#setPublicPath('./build')#setPublicPath('$public_path')#" "$install_dir/webpack.config.js"
 
+# Fix the hardcoded image base path in the JS. Several scripts build image URLs
+# (e.g. solution logos) from global.path_img, which upstream hardcodes to
+# '/build/images/' (or relative 'build/images/') with no install-path prefix, so
+# they 404 on a subpath install. Point it at "<path>/build/images/".
+path_img_base="${path%/}/build/images/"
+sed -i "s#path_img = '/build/images/'#path_img = '$path_img_base'#g" \
+    "$install_dir/assets/login.js" "$install_dir/assets/js/regle.js"
+sed -i "s#path_img = 'build/images/'#path_img = '$path_img_base'#g" \
+    "$install_dir/assets/app.js"
+
 #=================================================
 # NODE.JS + FRONTEND ASSETS
 #=================================================

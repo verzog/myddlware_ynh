@@ -79,6 +79,14 @@ fi
 public_path="${path%/}/build"
 sed -i "s#setPublicPath('./build')#setPublicPath('$public_path')#" "$install_dir/webpack.config.js"
 
+# Fix hardcoded image base path (path_img) so JS-built image URLs (e.g. solution
+# logos) include the install path instead of the unprefixed '/build/images/'.
+path_img_base="${path%/}/build/images/"
+sed -i "s#path_img = '/build/images/'#path_img = '$path_img_base'#g" \
+    "$install_dir/assets/login.js" "$install_dir/assets/js/regle.js"
+sed -i "s#path_img = 'build/images/'#path_img = '$path_img_base'#g" \
+    "$install_dir/assets/app.js"
+
 #=================================================
 # NODE.JS + FRONTEND ASSETS
 #=================================================
