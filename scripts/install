@@ -32,6 +32,31 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
     --commands="install --optimize-autoloader"
 
 #=================================================
+# PATCH FRONTEND ASSETS (bundle jQuery UI)
+#=================================================
+# Upstream removed the jQuery UI imports from the global bundle and relies on
+# per-page CDN <script> tags that load AFTER the bundle's ready handlers run,
+# so $.fn.draggable is undefined when regle.js calls it (breaking the rule,
+# workflow and rule-group pages). Re-add the imports to the global 'app' entry
+# (loaded on every page) so jQuery UI extends the single bundled jQuery
+# synchronously, before any ready handler — no CDN needed.
+ynh_script_progression --message="Patching frontend assets (jQuery UI)"
+if ! grep -q "ynh: bundle jQuery UI" "$install_dir/assets/app.js"; then
+    cat >> "$install_dir/assets/app.js" <<'JS'
+
+// ynh: bundle jQuery UI so $.fn.draggable etc. are available without a CDN
+require('jquery-ui');
+require('jquery-ui/ui/widgets/draggable');
+require('jquery-ui/ui/widgets/droppable');
+require('jquery-ui/ui/widgets/sortable');
+require('jquery-ui/ui/widgets/resizable');
+require('jquery-ui/ui/widgets/dialog');
+require('jquery-ui/ui/widgets/tabs');
+require('jquery-ui/ui/widgets/accordion');
+JS
+fi
+
+#=================================================
 # NODE.JS + FRONTEND ASSETS
 #=================================================
 ynh_script_progression --message="Installing Node.js" --weight=10
