@@ -46,16 +46,18 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
     --commands="install --optimize-autoloader"
 
 #=================================================
-# PATCH FRONTEND ASSETS (bundle jQuery UI)
+# PATCH FRONTEND ASSETS
 #=================================================
-# Re-add jQuery UI to the global 'app' entry so $.fn.draggable etc. are bundled
-# synchronously instead of via per-page CDN tags that load too late (see install
-# script for the full rationale).
+# 1. single jQuery (alias) so jquery-ui widgets attach to the app's instance;
+# 2. require jQuery UI early in 'app' so $.fn.draggable exists before any ready
+#    handler (no CDN); 3. absolute publicPath so assets resolve on deep routes.
+# See install script for the full rationale.
 ynh_script_progression --message="Patching frontend assets"
-if ! grep -q "ynh: bundle jQuery UI" "$install_dir/assets/app.js"; then
-    cat >> "$install_dir/assets/app.js" <<'JS'
 
-// ynh: bundle jQuery UI so $.fn.draggable etc. are available without a CDN
+if ! grep -q "ynh: bundle jQuery UI" "$install_dir/assets/app.js"; then
+    tmp_appjs="$(mktemp)"
+    cat > "$tmp_appjs" <<'JS'
+// ynh: bundle jQuery UI early, against the single aliased jQuery
 require('jquery-ui');
 require('jquery-ui/ui/widgets/draggable');
 require('jquery-ui/ui/widgets/droppable');
@@ -65,10 +67,15 @@ require('jquery-ui/ui/widgets/dialog');
 require('jquery-ui/ui/widgets/tabs');
 require('jquery-ui/ui/widgets/accordion');
 JS
+    cat "$install_dir/assets/app.js" >> "$tmp_appjs"
+    mv "$tmp_appjs" "$install_dir/assets/app.js"
+    chown "$app:$app" "$install_dir/assets/app.js"
 fi
 
-# Absolute publicPath matching the install path so asset/image URLs resolve on
-# deep routes (default relative './build' 404s there). See install for details.
+if ! grep -q "addAliases({ jquery:" "$install_dir/webpack.config.js"; then
+    sed -i "s#setManifestKeyPrefix('build/')#setManifestKeyPrefix('build/')\n    .addAliases({ jquery: require.resolve('jquery') })#" "$install_dir/webpack.config.js"
+fi
+
 public_path="${path%/}/build"
 sed -i "s#setPublicPath('./build')#setPublicPath('$public_path')#" "$install_dir/webpack.config.js"
 
