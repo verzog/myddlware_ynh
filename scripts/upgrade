@@ -81,9 +81,11 @@ fi
 # DUMP JS ROUTES
 #=================================================
 ynh_script_progression --message="Dumping JS routes"
-mkdir -p "$install_dir/public/js"
-sudo -u "$app" php$phpversion "$install_dir/bin/console" \
-    fos:js-routing:dump --format=json --target=public/js/fos_js_routes.json
+# Run from the install dir (CWD) and create the target dir as the app user, since
+# fos:js-routing:dump resolves the relative target against the process CWD.
+sudo -u "$app" mkdir -p "$install_dir/public/js"
+(cd "$install_dir" && sudo -u "$app" php$phpversion "$install_dir/bin/console" \
+    fos:js-routing:dump --format=json --target=public/js/fos_js_routes.json)
 
 chown -R "$app:$app" "$install_dir"
 
