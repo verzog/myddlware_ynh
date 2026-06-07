@@ -46,6 +46,28 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
     --commands="install --optimize-autoloader"
 
 #=================================================
+# PATCH FRONTEND ASSETS (bundle jQuery UI)
+#=================================================
+# Re-add jQuery UI to the global 'app' entry so $.fn.draggable etc. are bundled
+# synchronously instead of via per-page CDN tags that load too late (see install
+# script for the full rationale).
+ynh_script_progression --message="Patching frontend assets (jQuery UI)"
+if ! grep -q "ynh: bundle jQuery UI" "$install_dir/assets/app.js"; then
+    cat >> "$install_dir/assets/app.js" <<'JS'
+
+// ynh: bundle jQuery UI so $.fn.draggable etc. are available without a CDN
+require('jquery-ui');
+require('jquery-ui/ui/widgets/draggable');
+require('jquery-ui/ui/widgets/droppable');
+require('jquery-ui/ui/widgets/sortable');
+require('jquery-ui/ui/widgets/resizable');
+require('jquery-ui/ui/widgets/dialog');
+require('jquery-ui/ui/widgets/tabs');
+require('jquery-ui/ui/widgets/accordion');
+JS
+fi
+
+#=================================================
 # NODE.JS + FRONTEND ASSETS
 #=================================================
 ynh_script_progression --message="Installing Node.js" --weight=10
