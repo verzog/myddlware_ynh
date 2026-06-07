@@ -32,19 +32,23 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
     --commands="install --optimize-autoloader"
 
 #=================================================
-# PATCH FRONTEND ASSETS (bundle jQuery UI)
+# PATCH FRONTEND ASSETS
 #=================================================
-# Upstream removed the jQuery UI imports from the global bundle and relies on
-# per-page CDN <script> tags that load AFTER the bundle's ready handlers run,
-# so $.fn.draggable is undefined when regle.js calls it (breaking the rule,
-# workflow and rule-group pages). Re-add the imports to the global 'app' entry
-# (loaded on every page) so jQuery UI extends the single bundled jQuery
-# synchronously, before any ready handler — no CDN needed.
+# Three fixes applied before 'yarn build':
+#  1. Force a single jQuery instance. jquery-ui 1.14 pulls its own nested jquery
+#     copy, so its widgets attach to a different jQuery and $.fn.draggable is
+#     missing on the one the app uses (why upstream fell back to a CDN). A
+#     webpack alias collapses them to one instance.
+#  2. Require jQuery UI early in the global 'app' entry (loaded on every page),
+#     so $.fn.draggable etc. exist before any ready handler runs — no CDN.
+#  3. Absolute publicPath matching the install path, so asset/image URLs resolve
+#     on deep routes (default relative './build' 404s there).
 ynh_script_progression --message="Patching frontend assets"
-if ! grep -q "ynh: bundle jQuery UI" "$install_dir/assets/app.js"; then
-    cat >> "$install_dir/assets/app.js" <<'JS'
 
-// ynh: bundle jQuery UI so $.fn.draggable etc. are available without a CDN
+if ! grep -q "ynh: bundle jQuery UI" "$install_dir/assets/app.js"; then
+    tmp_appjs="$(mktemp)"
+    cat > "$tmp_appjs" <<'JS'
+// ynh: bundle jQuery UI early, against the single aliased jQuery
 require('jquery-ui');
 require('jquery-ui/ui/widgets/draggable');
 require('jquery-ui/ui/widgets/droppable');
@@ -54,12 +58,15 @@ require('jquery-ui/ui/widgets/dialog');
 require('jquery-ui/ui/widgets/tabs');
 require('jquery-ui/ui/widgets/accordion');
 JS
+    cat "$install_dir/assets/app.js" >> "$tmp_appjs"
+    mv "$tmp_appjs" "$install_dir/assets/app.js"
+    chown "$app:$app" "$install_dir/assets/app.js"
 fi
 
-# Build with an absolute publicPath matching the install path. The default
-# relative './build' resolves against the current URL, so asset/image URLs
-# 404 on deep routes (e.g. /rule/view/123 -> /rule/view/build/...). Use
-# "/build" at the domain root, or "<path>/build" on a subpath install.
+if ! grep -q "addAliases({ jquery:" "$install_dir/webpack.config.js"; then
+    sed -i "s#setManifestKeyPrefix('build/')#setManifestKeyPrefix('build/')\n    .addAliases({ jquery: require.resolve('jquery') })#" "$install_dir/webpack.config.js"
+fi
+
 public_path="${path%/}/build"
 sed -i "s#setPublicPath('./build')#setPublicPath('$public_path')#" "$install_dir/webpack.config.js"
 
