@@ -109,8 +109,11 @@ chown -R "$app:$app" "$install_dir"
 #=================================================
 ynh_script_progression --message="Running database migrations" --weight=5
 if [ -x "$install_dir/bin/console" ]; then
+    # Myddleware ships no migration files (install uses doctrine:schema:create),
+    # so migrate exits non-zero on "no registered migrations". --allow-no-migration
+    # makes that a clean no-op while still applying migrations if upstream adds any.
     sudo -u "$app" php$phpversion "$install_dir/bin/console" \
-        doctrine:migrations:migrate --no-interaction
+        doctrine:migrations:migrate --no-interaction --allow-no-migration
 fi
 
 #=================================================
