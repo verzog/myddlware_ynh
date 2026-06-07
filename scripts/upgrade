@@ -117,6 +117,18 @@ if [ -x "$install_dir/bin/console" ]; then
 fi
 
 #=================================================
+# LOAD / REFRESH INITIAL DATA
+#=================================================
+# Seed foundational data (solutions/connectors, config, cron jobs, functions).
+# Fixtures are idempotent (guarded by name), so --append updates/adds without
+# duplicating, and also repairs installs that predate this step.
+ynh_script_progression --message="Refreshing initial data" --weight=3
+if [ -x "$install_dir/bin/console" ]; then
+    sudo -u "$app" php$phpversion "$install_dir/bin/console" \
+        doctrine:fixtures:load --no-interaction --append
+fi
+
+#=================================================
 # DUMP JS ROUTES
 #=================================================
 ynh_script_progression --message="Dumping JS routes"
