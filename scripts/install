@@ -96,8 +96,11 @@ chmod 640 "$install_dir/config/jwt/private.pem" "$install_dir/config/jwt/public.
 chown -R "$app:$app" "$install_dir"
 
 # Run a Symfony console command as the app user with the full runtime env.
+# CWD must be the install dir: some commands (e.g. fos:js-routing:dump) resolve
+# relative paths against the process CWD, which otherwise points at the root-only
+# /var/cache/yunohost work dir and fails with permission errors.
 run_console() {
-    sudo -u "$app" env \
+    (cd "$install_dir" && sudo -u "$app" env \
         APP_ENV=prod \
         APP_SECRET="$secret" \
         DATABASE_HOST=127.0.0.1 \
@@ -106,7 +109,7 @@ run_console() {
         DATABASE_USER="$db_user" \
         DATABASE_PASSWORD="$db_pwd" \
         JWT_PASSPHRASE="$jwt_passphrase" \
-        php$phpversion "$install_dir/bin/console" "$@"
+        php$phpversion "$install_dir/bin/console" "$@")
 }
 
 #=================================================
@@ -128,7 +131,9 @@ run_console cache:warmup
 # DUMP JS ROUTES
 #=================================================
 ynh_script_progression --message="Dumping JS routes"
-mkdir -p "$install_dir/public/js"
+# Create the target dir as the app user so the dump (run as the app user) can
+# write into it; run_console resolves the relative target against the install dir.
+sudo -u "$app" mkdir -p "$install_dir/public/js"
 run_console fos:js-routing:dump --format=json --target=public/js/fos_js_routes.json
 
 #=================================================
