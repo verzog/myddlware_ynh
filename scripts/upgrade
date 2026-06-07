@@ -46,6 +46,29 @@ ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
     --commands="install --optimize-autoloader"
 
 #=================================================
+# ADD WORDPRESS CONNECTOR
+#=================================================
+# Provide and register the WordPress connector (see install script). Idempotent.
+ynh_script_progression --message="Adding the WordPress connector"
+ynh_app_basedir="${YNH_APP_BASEDIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+cp "$ynh_app_basedir/conf/wordpress.php" "$install_dir/src/Solutions/wordpress.php"
+chown "$app:$app" "$install_dir/src/Solutions/wordpress.php"
+if ! grep -q "'wordpress'" "$install_dir/src/Manager/SolutionManager.php"; then
+    sed -i "s#'iomad'#'iomad',\n\t\t\t\t\t\t\t'wordpress'#" "$install_dir/src/Manager/SolutionManager.php"
+fi
+if ! grep -q "wordpress \$wordpress" "$install_dir/src/Manager/SolutionManager.php"; then
+    sed -i "s#iomad \$iomad#iomad \$iomad,\n        wordpress \$wordpress#" "$install_dir/src/Manager/SolutionManager.php"
+fi
+if ! grep -q "'wordpress'" "$install_dir/src/DataFixtures/LoadSolutionData.php"; then
+    sed -i "/\['name' => 'moodle',/a\\        ['name' => 'wordpress', 'active' => 1, 'source' => 1, 'target' => 1]," "$install_dir/src/DataFixtures/LoadSolutionData.php"
+fi
+# We changed SolutionManager's constructor; drop the compiled prod container so
+# it recompiles on the next console/web boot (a stale container would fatal with
+# "Too few arguments to SolutionManager::__construct"). This also picks up any
+# upstream code changes from the new sources.
+rm -rf "$install_dir/var/cache/prod"
+
+#=================================================
 # PATCH FRONTEND ASSETS
 #=================================================
 # 1. single jQuery (alias) so jquery-ui widgets attach to the app's instance;
