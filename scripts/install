@@ -24,11 +24,11 @@ ynh_script_progression --message="Installing Composer" --weight=2
 ynh_install_composer --phpversion="$phpversion" --workdir="$install_dir" --composerversion=2.7.7
 
 ynh_script_progression --message="Installing PHP dependencies" --weight=10
-ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
 # NB: Myddleware's config/bundles.php enables DoctrineFixturesBundle (a
 # require-dev package) in the prod environment, so the kernel fails to boot
 # with --no-dev. Dev dependencies must stay installed until upstream gates
 # those bundles to dev/test only.
+ynh_composer_exec --phpversion="$phpversion" --workdir="$install_dir" \
     --commands="install --optimize-autoloader"
 
 #=================================================
