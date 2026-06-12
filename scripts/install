@@ -107,6 +107,12 @@ sed -i "s#path_img = '/build/images/'#path_img = '$path_img_base'#g" \
 sed -i "s#path_img = 'build/images/'#path_img = '$path_img_base'#g" \
     "$install_dir/assets/app.js"
 
+# Normalize the remaining (non-path_img) hard-coded image/base paths: the rule
+# "createout" modal, connector status icons, and the document-detail AJAX/base
+# helpers. Without this, solution logos, connector test icons and the interactive
+# document-detail panels 404 on a subpath install. See _common.sh for details.
+myddleware_fix_asset_paths
+
 #=================================================
 # NODE.JS + FRONTEND ASSETS
 #=================================================
