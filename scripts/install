@@ -43,6 +43,11 @@ ynh_script_progression --message="Adding the WordPress connector"
 ynh_app_basedir="${YNH_APP_BASEDIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 cp "$ynh_app_basedir/conf/wordpress.php" "$install_dir/src/Solutions/wordpress.php"
 chown "$app:$app" "$install_dir/src/Solutions/wordpress.php"
+# Ship the field metadata the connector require's (src/Solutions/lib/wordpress/
+# metadata.php). Without it setMetadata() returns nothing and no field is mappable.
+mkdir -p "$install_dir/src/Solutions/lib/wordpress"
+cp "$ynh_app_basedir/conf/wordpress-metadata.php" "$install_dir/src/Solutions/lib/wordpress/metadata.php"
+chown -R "$app:$app" "$install_dir/src/Solutions/lib"
 if ! grep -q "'wordpress'" "$install_dir/src/Manager/SolutionManager.php"; then
     sed -i "s#'iomad'#'iomad',\n\t\t\t\t\t\t\t'wordpress'#" "$install_dir/src/Manager/SolutionManager.php"
 fi
@@ -101,6 +106,12 @@ sed -i "s#path_img = '/build/images/'#path_img = '$path_img_base'#g" \
     "$install_dir/assets/login.js" "$install_dir/assets/js/regle.js"
 sed -i "s#path_img = 'build/images/'#path_img = '$path_img_base'#g" \
     "$install_dir/assets/app.js"
+
+# Normalize the remaining (non-path_img) hard-coded image/base paths: the rule
+# "createout" modal, connector status icons, and the document-detail AJAX/base
+# helpers. Without this, solution logos, connector test icons and the interactive
+# document-detail panels 404 on a subpath install. See _common.sh for details.
+myddleware_fix_asset_paths
 
 #=================================================
 # NODE.JS + FRONTEND ASSETS

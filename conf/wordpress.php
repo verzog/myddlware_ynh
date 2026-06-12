@@ -125,10 +125,10 @@ class wordpress extends solution
         $module = $param['module'];
         $refField = $this->getRefFieldName($param);
         $limit = !empty($param['limit']) ? (int) $param['limit'] : 100;
+        $perPage = max(1, min($limit, 100));
 
         $query = [
-            'per_page' => min($limit, 100),
-            'page' => 1,
+            'per_page' => $perPage,
             'context' => 'edit',
             'orderby' => ('comments' === $module ? 'date' : 'modified'),
             'order' => 'asc',
@@ -142,28 +142,57 @@ class wordpress extends solution
             $query['status'] = 'approved';
         }
 
-        $records = $this->wpRequest('GET', '/'.$module, $query);
-        if (!is_array($records)) {
-            throw new \Exception('Unexpected WordPress response for module '.$module.'.');
-        }
-
         $result = [];
-        foreach ($records as $item) {
-            if (!is_array($item)) {
-                continue;
+        $page = 1;
+        $totalPages = 1;
+        // Walk every page WordPress reports (X-WP-TotalPages), not just the first,
+        // so a sync with more than per_page changed records doesn't silently drop
+        // everything past page 1. Using the header count means we never request a
+        // page past the end (the REST API rejects that with a 400).
+        do {
+            $query['page'] = $page;
+            $headers = [];
+            $records = $this->wpRequest('GET', '/'.$module, $query, null, $headers);
+            if (!is_array($records)) {
+                throw new \Exception('Unexpected WordPress response for module '.$module.'.');
             }
-            $record = ['id' => (string) ($item['id'] ?? '')];
-            foreach ($param['fields'] as $field) {
-                $record[$field] = $this->extractField($item, $field);
+            if (1 === $page) {
+                $totalPages = max(1, (int) $this->headerValue($headers, 'X-WP-TotalPages'));
             }
-            // Ensure the reference field is present for date_modified calculation
-            if (empty($record[$refField]) && isset($item[$refField])) {
-                $record[$refField] = $this->extractField($item, $refField);
+            foreach ($records as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $record = ['id' => (string) ($item['id'] ?? '')];
+                foreach ($param['fields'] as $field) {
+                    $record[$field] = $this->extractField($item, $field);
+                }
+                // Ensure the reference field is present for date_modified calculation
+                if (empty($record[$refField]) && isset($item[$refField])) {
+                    $record[$refField] = $this->extractField($item, $refField);
+                }
+                $result[] = $record;
+                if (count($result) >= $limit) {
+                    return $result;
+                }
             }
-            $result[] = $record;
-        }
+            ++$page;
+        } while ($page <= $totalPages);
 
         return $result;
+    }
+
+    // Case-insensitive lookup of a single response header value (Guzzle preserves
+    // the header name's original casing in getHeaders()).
+    protected function headerValue(array $headers, string $name): string
+    {
+        foreach ($headers as $key => $values) {
+            if (0 === strcasecmp($key, $name)) {
+                return is_array($values) ? (string) ($values[0] ?? '') : (string) $values;
+            }
+        }
+
+        return '';
     }
 
     // Flatten WordPress { rendered, raw } field objects to a scalar value
@@ -224,11 +253,14 @@ class wordpress extends solution
     /**
      * Perform a WordPress REST API call authenticated with an Application Password.
      *
+     * @param array|null $responseHeaders out-param populated with the response
+     *                                     headers (Guzzle shape: name => values[])
+     *
      * @return mixed decoded JSON (array) or raw string body
      *
      * @throws \Exception
      */
-    protected function wpRequest(string $method, string $path, array $query = [], ?array $body = null)
+    protected function wpRequest(string $method, string $path, array $query = [], ?array $body = null, ?array &$responseHeaders = null)
     {
         if (null === $this->wpClient) {
             $this->wpClient = new Client(['timeout' => 30]);
@@ -248,6 +280,7 @@ class wordpress extends solution
 
         try {
             $response = $this->wpClient->request($method, $url, $options);
+            $responseHeaders = $response->getHeaders();
             $contents = (string) $response->getBody();
             $decoded = json_decode($contents, true);
 
